@@ -8,12 +8,12 @@ This document outlines the phased development plan for the BuySpy project, tailo
 
 **Goal:** Understand the starter kit structure and establish a live development loop using the Streamlit playground and a Telegram polling client.
 
--   **Task 1.1: Project Scaffolding & Familiarization**
+-   **Task 1.1: Project Scaffolding & Familiarization (done)**
     -   Scaffolding is complete using the ADK starter kit.
     -   Review the project structure, especially `app/agent.py`, `pyproject.toml`, and the `Makefile`.
     -   Configure the `.env` file with initial GCP project details and a Telegram Bot token.
 
--   **Task 1.2: Initial Agent Test**
+-   **Task 1.2: Initial Agent Test (done)**
     -   Run `make install` to set up the virtual environment with `uv`.
     -   Run `make playground`. Interact with the default ReAct agent in the Streamlit UI to confirm the core agent server is working.
 
