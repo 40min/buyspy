@@ -30,6 +30,24 @@ This project is built using Google's Agent Development Kit (ADK) and demonstrate
     -   Google Places API
 -   **Dependency Management:** uv
 -   **Local Testing:** Streamlit Playground
+-   **Infrastructure:** Terraform (for Google Cloud deployment)
+
+## 📁 Project Structure
+
+```
+buyspy/
+├── app/                 # Core application code
+│   ├── agent.py         # Main agent logic
+│   ├── agent_engine_app.py # Agent Engine application logic
+│   └── app_utils/       # App utilities and helpers
+├── .github/             # CI/CD pipeline configurations for GitHub Actions
+├── deployment/          # Infrastructure and deployment scripts
+├── notebooks/           # Jupyter notebooks for prototyping and evaluation
+├── tests/               # Unit, integration, and load tests
+├── Makefile             # Makefile for common commands
+├── GEMINI.md            # AI-assisted development guide
+└── pyproject.toml       # Project dependencies and configuration
+```
 
 ## 🚀 Getting Started
 
@@ -38,6 +56,7 @@ This project is built using Google's Agent Development Kit (ADK) and demonstrate
 -   **uv**: Python package manager - [Install](https://docs.astral.sh/uv/getting-started/installation/)
 -   **Google Cloud SDK**: For authenticating to GCP services - [Install](https://cloud.google.com/sdk/docs/install)
 -   **make**: Build automation tool (pre-installed on most Unix-based systems)
+-   **Terraform**: For infrastructure deployment - [Install](https://developer.hashicorp.com/terraform/downloads)
 -   A Telegram Bot Token from BotFather.
 -   A Google Cloud Project with billing enabled.
 
@@ -100,7 +119,33 @@ This project uses two main components for local development: the ADK agent serve
     ```
     You can now interact with your agent by messaging your bot on Telegram.
 
-## 🐳 Deployment (Local Server with Docker)
+## ⚙️ Available Commands
+
+| Command              | Description                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| `make install`       | Install all required dependencies using uv                                                  |
+| `make playground`    | Launch Streamlit interface for testing agent locally and remotely |
+| `make deploy`        | Deploy agent to Agent Engine |
+| `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise |
+| `make test`          | Run unit and integration tests                                                              |
+| `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
+| `make setup-dev-env` | Set up development environment resources using Terraform                         |
+
+For full command options and usage, refer to the [Makefile](Makefile).
+
+## 🔄 Development Process
+
+This project follows a structured development approach:
+
+1. **Prototype:** Build your BuySpy AI agent using the intro notebooks in `notebooks/` for guidance. Use Vertex AI Evaluation to assess performance.
+2. **Integrate:** Customize your agent logic by editing `app/agent.py` to implement shopping concierge features.
+3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
+4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. For streamlined infrastructure deployment, simply run `make setup-dev-env` or `uvx agent-starter-pack setup-cicd`.
+5. **Monitor:** Track performance and gather insights using Cloud Logging, Tracing, and the Looker Studio dashboard to iterate on your application.
+
+## 🚀 Deployment Options
+
+### Docker Deployment (Local)
 
 The primary deployment target is a local server using Docker.
 
@@ -115,4 +160,32 @@ The primary deployment target is a local server using Docker.
     docker-compose up
     ```
 
-*(Note: The starter kit also provides extensive tooling for deploying to Google Cloud using Terraform and CI/CD. For more details, refer to the original starter pack documentation.)*
+### Google Cloud Deployment
+
+For streamlined deployment to Google Cloud Platform:
+
+#### One-Command Deployment
+For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform:
+```bash
+uvx agent-starter-pack setup-cicd
+```
+Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
+
+#### Manual Deployment
+
+**Dev Environment:**
+```bash
+gcloud config set project <your-dev-project-id>
+make deploy
+```
+
+**Production Deployment:**
+The repository includes a comprehensive Terraform configuration for production deployment. See [deployment/README.md](deployment/README.md) for detailed instructions on how to deploy the infrastructure and application.
+
+## 📊 Monitoring and Observability
+
+The application uses OpenTelemetry for comprehensive observability with all events being sent to:
+- **Google Cloud Trace and Logging** for real-time monitoring
+- **BigQuery** for long-term storage and analysis
+
+You can use [this Looker Studio dashboard](https://lookerstudio.google.com/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC) template for visualizing events being logged in BigQuery. See the "Setup Instructions" tab to get started.
