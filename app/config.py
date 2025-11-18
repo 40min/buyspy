@@ -9,7 +9,7 @@ and validated at application startup.
 import os
 from functools import lru_cache
 
-from pydantic import model_validator
+from pydantic import ConfigDict, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     @model_validator(mode="after")
-    def validate_required_fields(self):
+    def validate_required_fields(self) -> "Settings":
         """Validate that required fields are not empty strings."""
         required_fields = ["gcp_project_id", "telegram_bot_token"]
 
@@ -45,13 +45,11 @@ class Settings(BaseSettings):
 
         return self
 
-    class Config:
-        """Pydantic configuration."""
-
-        env_file = os.getenv("ENV_FILE", ".env")
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"
+    model_config = ConfigDict(  # type: ignore
+        env_file=os.getenv("ENV_FILE", ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 @lru_cache
@@ -70,4 +68,4 @@ def get_settings() -> Settings:
         ValidationError: If required environment variables are missing
                         or have invalid values
     """
-    return Settings()
+    return Settings()  # type: ignore

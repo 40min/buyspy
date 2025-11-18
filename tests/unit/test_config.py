@@ -6,6 +6,8 @@ and singleton behavior of get_settings() function.
 """
 
 import os
+from collections.abc import Generator
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -14,7 +16,7 @@ from pydantic import ValidationError
 from app.config import Settings, get_settings
 
 
-def _get_env_vars_to_clear():
+def _get_env_vars_to_clear() -> list[str]:
     """
     Dynamically get environment variable names from Settings class fields.
 
@@ -29,7 +31,7 @@ def _get_env_vars_to_clear():
 
 
 @pytest.fixture(autouse=True)
-def clear_env_vars():
+def clear_env_vars() -> Generator[None, None, None]:
     """
     Clear environment variables before each test and restore them after.
 
@@ -69,7 +71,7 @@ def clear_env_vars():
 class TestSettingsClass:
     """Test cases for the Settings class."""
 
-    def test_settings_with_valid_env_vars(self):
+    def test_settings_with_valid_env_vars(self) -> None:
         """Test Settings creation with valid environment variables."""
         # Set up environment variables
         os.environ["GCP_PROJECT_ID"] = "test-project-123"
@@ -78,7 +80,7 @@ class TestSettingsClass:
         os.environ["ARTIFACTS_BUCKET_NAME"] = "test-bucket"
         os.environ["LOG_LEVEL"] = "DEBUG"
 
-        settings = Settings()
+        settings = Settings()  # type: ignore
 
         assert settings.gcp_project_id == "test-project-123"
         assert settings.telegram_bot_token == "test-bot-token-456"
@@ -86,13 +88,13 @@ class TestSettingsClass:
         assert settings.artifacts_bucket_name == "test-bucket"
         assert settings.log_level == "DEBUG"
 
-    def test_settings_with_required_vars_only(self):
+    def test_settings_with_required_vars_only(self) -> None:
         """Test Settings creation with only required environment variables."""
         # Set only required environment variables
         os.environ["GCP_PROJECT_ID"] = "minimal-test-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "minimal-token"
 
-        settings = Settings()
+        settings = Settings()  # type: ignore
 
         # Check required fields
         assert settings.gcp_project_id == "minimal-test-project"
@@ -103,17 +105,17 @@ class TestSettingsClass:
         assert settings.artifacts_bucket_name is None  # default value
         assert settings.log_level == "INFO"  # default value
 
-    def test_settings_invalid_gcp_region_format(self):
+    def test_settings_invalid_gcp_region_format(self) -> None:
         """Test Settings with invalid GCP region format."""
         os.environ["GCP_PROJECT_ID"] = "test-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "test-token"
         os.environ["GCP_REGION"] = "invalid-region-format"
 
         # This should still work as it's a string field
-        settings = Settings()
+        settings = Settings()  # type: ignore
         assert settings.gcp_region == "invalid-region-format"
 
-    def test_settings_case_insensitive_env_vars(self):
+    def test_settings_case_insensitive_env_vars(self) -> None:
         """Test that environment variables are case insensitive."""
         # Set environment variables in different cases (lowercase)
         os.environ["gcp_project_id"] = "lowercase-project"
@@ -121,7 +123,7 @@ class TestSettingsClass:
         os.environ["gcp_region"] = "asia-southeast1"
 
         try:
-            settings = Settings()
+            settings = Settings()  # type: ignore
 
             assert settings.gcp_project_id == "lowercase-project"
             assert settings.telegram_bot_token == "lowercase-token"
@@ -132,7 +134,7 @@ class TestSettingsClass:
                 if key in os.environ:
                     del os.environ[key]
 
-    def test_settings_empty_string_values(self):
+    def test_settings_empty_string_values(self) -> None:
         """Test Settings with empty string values for required fields."""
         # Temporarily use a different ENV_FILE to avoid .env.test values
         os.environ["ENV_FILE"] = "/tmp/non_existent_env_file"
@@ -145,29 +147,29 @@ class TestSettingsClass:
 
         # Empty string for required field should raise ValidationError
         with pytest.raises(ValidationError):
-            Settings()
+            Settings()  # type: ignore
 
-    def test_settings_optional_fields_with_empty_strings(self):
+    def test_settings_optional_fields_with_empty_strings(self) -> None:
         """Test Settings with empty strings for optional fields."""
         os.environ["GCP_PROJECT_ID"] = "test-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "test-token"
         os.environ["ARTIFACTS_BUCKET_NAME"] = ""
         os.environ["LOG_LEVEL"] = ""
 
-        settings = Settings()
+        settings = Settings()  # type: ignore
 
         # Optional fields should accept empty strings
         assert settings.artifacts_bucket_name == ""
         assert settings.log_level == ""
 
-    def test_settings_special_characters_in_values(self):
+    def test_settings_special_characters_in_values(self) -> None:
         """Test Settings with special characters in environment variable values."""
         os.environ["GCP_PROJECT_ID"] = "test-project-with-dashes_123"
         os.environ["TELEGRAM_BOT_TOKEN"] = (
             "1234567890:AAEhBOg2hD8vQqP8X8pQqP8X8pQqP8X8pQqP8X"
         )
 
-        settings = Settings()
+        settings = Settings()  # type: ignore
 
         assert settings.gcp_project_id == "test-project-with-dashes_123"
         assert (
@@ -179,7 +181,7 @@ class TestSettingsClass:
 class TestGetSettings:
     """Test cases for the get_settings() function."""
 
-    def test_get_settings_singleton_behavior(self):
+    def test_get_settings_singleton_behavior(self) -> None:
         """Test that get_settings() returns the same instance (singleton pattern)."""
         # Set up environment variables
         os.environ["GCP_PROJECT_ID"] = "singleton-test-project"
@@ -198,7 +200,7 @@ class TestGetSettings:
         assert settings2 is settings3
         assert settings1 is settings3
 
-    def test_get_settings_cache_clearing(self):
+    def test_get_settings_cache_clearing(self) -> None:
         """Test that clearing the cache creates a new instance."""
         # Set up environment variables
         os.environ["GCP_PROJECT_ID"] = "cache-test-project"
@@ -223,7 +225,7 @@ class TestGetSettings:
         assert settings1.gcp_project_id == settings2.gcp_project_id
         assert settings1.telegram_bot_token == settings2.telegram_bot_token
 
-    def test_get_settings_with_valid_env_vars(self):
+    def test_get_settings_with_valid_env_vars(self) -> None:
         """Test get_settings() function with valid environment variables."""
         os.environ["GCP_PROJECT_ID"] = "get-settings-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "get-settings-token"
@@ -239,7 +241,7 @@ class TestGetSettings:
         assert settings.telegram_bot_token == "get-settings-token"
         assert settings.gcp_region == "europe-west2"
 
-    def test_get_settings_preserves_default_values(self):
+    def test_get_settings_preserves_default_values(self) -> None:
         """Test that get_settings() preserves default values for optional fields."""
         # Temporarily disable .env.test to test actual defaults
         os.environ["ENV_FILE"] = "/tmp/non_existent_env_file"
@@ -261,7 +263,7 @@ class TestGetSettings:
 class TestSettingsIntegration:
     """Integration tests for Settings class behavior."""
 
-    def test_env_vars_override_dotenv_file(self, tmp_path):
+    def test_env_vars_override_dotenv_file(self, tmp_path: Any) -> None:
         """Test that environment variables take precedence over .env file."""
         # Create a .env file
         env_content = """
@@ -278,18 +280,18 @@ TELEGRAM_BOT_TOKEN=env-file-token
         os.environ["GCP_PROJECT_ID"] = "env-var-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "env-var-token"
 
-        settings = Settings()
+        settings = Settings()  # type: ignore
 
         # Should use environment variable values, not .env file values
         assert settings.gcp_project_id == "env-var-project"
         assert settings.telegram_bot_token == "env-var-token"
 
-    def test_settings_type_validation(self):
+    def test_settings_type_validation(self) -> None:
         """Test that Settings properly validates field types."""
         os.environ["GCP_PROJECT_ID"] = "type-test-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "type-test-token"
 
-        settings = Settings()
+        settings = Settings()  # type: ignore
 
         # Verify types
         assert isinstance(settings.gcp_project_id, str)
@@ -302,7 +304,7 @@ TELEGRAM_BOT_TOKEN=env-file-token
 class TestSettingsDefaults:
     """Test cases specifically for Settings default values."""
 
-    def test_default_gcp_region_value(self):
+    def test_default_gcp_region_value(self) -> None:
         """Test that GCP_REGION has the correct default value."""
         # Temporarily disable .env.test to test actual defaults
         os.environ["ENV_FILE"] = "/tmp/non_existent_env_file"
@@ -311,32 +313,32 @@ class TestSettingsDefaults:
         os.environ["TELEGRAM_BOT_TOKEN"] = "test-token"
 
         # Don't set GCP_REGION, should use default
-        settings = Settings()
+        settings = Settings()  # type: ignore
         assert settings.gcp_region == "europe-west1"
 
-    def test_default_log_level_value(self):
+    def test_default_log_level_value(self) -> None:
         """Test that LOG_LEVEL has the correct default value."""
         os.environ["GCP_PROJECT_ID"] = "test-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "test-token"
 
         # Don't set LOG_LEVEL, should use default
-        settings = Settings()
+        settings = Settings()  # type: ignore
         assert settings.log_level == "INFO"
 
-    def test_default_artifacts_bucket_name_value(self):
+    def test_default_artifacts_bucket_name_value(self) -> None:
         """Test that ARTIFACTS_BUCKET_NAME has the correct default value."""
         os.environ["GCP_PROJECT_ID"] = "test-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "test-token"
 
         # Don't set ARTIFACTS_BUCKET_NAME, should use default
-        settings = Settings()
+        settings = Settings()  # type: ignore
         assert settings.artifacts_bucket_name is None
 
 
 class TestSettingsFromTestEnv:
     """Test cases that verify .env.test is being used."""
 
-    def test_settings_uses_env_test_file(self):
+    def test_settings_uses_env_test_file(self) -> None:
         """Test that Settings loads from .env.test file when conftest sets ENV_FILE."""
         # Ensure ENV_FILE is set to .env.test
         os.environ["ENV_FILE"] = ".env.test"
@@ -344,7 +346,7 @@ class TestSettingsFromTestEnv:
         # Clear cache to force reload from .env.test
         get_settings.cache_clear()
 
-        settings = Settings()
+        settings = Settings()  # type: ignore
 
         # Should load values from .env.test
         assert settings.gcp_project_id == "test-project-123"
@@ -356,7 +358,7 @@ class TestSettingsFromTestEnv:
         assert settings.artifacts_bucket_name is None
         assert settings.log_level == "INFO"
 
-    def test_env_test_file_content_matches_expected(self):
+    def test_env_test_file_content_matches_expected(self) -> None:
         """Verify the .env.test file has the expected content."""
         # Ensure ENV_FILE is set to .env.test
         os.environ["ENV_FILE"] = ".env.test"
@@ -364,7 +366,7 @@ class TestSettingsFromTestEnv:
         # Clear cache to force reload from .env.test
         get_settings.cache_clear()
 
-        settings = Settings()
+        settings = Settings()  # type: ignore
 
         # These values should come from .env.test
         assert settings.gcp_project_id == "test-project-123"
