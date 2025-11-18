@@ -140,7 +140,7 @@ ADK allows you to define agents, tools, and even multi-agent workflows using a s
     # For Google AI Studio (simpler setup)
     GOOGLE_GENAI_USE_VERTEXAI=0
     GOOGLE_API_KEY=<your-Google-Gemini-API-key>
-    
+
     # For Google Cloud Vertex AI (production)
     GOOGLE_GENAI_USE_VERTEXAI=1
     GOOGLE_CLOUD_PROJECT=<your_gcp_project>
@@ -190,9 +190,9 @@ ADK allows you to define agents, tools, and even multi-agent workflows using a s
     description: Learning assistant that provides tutoring in code and math.
     instruction: |
       You are a learning assistant that helps students with coding and math questions.
-      
+
       You delegate coding questions to the code_tutor_agent and math questions to the math_tutor_agent.
-      
+
       Follow these steps:
       1. If the user asks about programming or coding, delegate to the code_tutor_agent.
       2. If the user asks about math concepts or problems, delegate to the math_tutor_agent.
@@ -397,7 +397,7 @@ The `instruction` is critical. It guides the LLM's behavior, persona, and tool u
 **Example 1: Constraining Tool Use and Output Format**
 ```python
 import datetime
-from google.adk.tools import google_search   
+from google.adk.tools import google_search
 
 
 plan_generator = LlmAgent(
@@ -909,7 +909,7 @@ Tools extend an agent's abilities beyond text generation.
             years (int): The number of years the money is invested.
             compounding_frequency (int): The number of times interest is compounded
                                          per year (e.g., 1 for annually, 12 for monthly).
-            
+
         Returns:
             dict: Contains the calculation result.
                   - 'status' (str): "success" or "error".
@@ -1057,17 +1057,17 @@ from google.genai import types
 config = RunConfig(
     # Safety limits
     max_llm_calls=100,  # Prevent infinite agent loops
-    
+
     # Streaming & Modality
     response_modalities=["AUDIO", "TEXT"], # Request specific output formats
-    
+
     # Voice configuration (for AUDIO modality)
     speech_config=types.SpeechConfig(
         voice_config=types.VoiceConfig(
             prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
         )
     ),
-    
+
     # Debugging
     save_input_blobs_as_artifacts=True # Save uploaded files to ArtifactService
 )
@@ -1287,10 +1287,10 @@ Fully managed, scalable service for ADK agents on Google Cloud.
 *   **Deployment**: Use `vertexai.agent_engines.create()`.
     ```python
     from vertexai.preview import reasoning_engines # or agent_engines directly in later versions
-    
+
     # Wrap your root_agent for deployment
     app_for_engine = reasoning_engines.AdkApp(agent=root_agent, enable_tracing=True)
-    
+
     # Deploy
     remote_app = agent_engines.create(
         agent_engine=app_for_engine,
@@ -1484,7 +1484,7 @@ from google.adk.agents.run_config import RunConfig
 async def start_streaming_session(runner, session, user_id):
     # 1. Configure modalities (e.g., AUDIO output for voice agents)
     run_config = RunConfig(response_modalities=["AUDIO"])
-    
+
     # 2. Create input queue for client data (audio chunks, text)
     live_queue = LiveRequestQueue()
 
@@ -1507,7 +1507,7 @@ async def start_streaming_session(runner, session, user_id):
                 elif part.text:
                      # Send text to client
                      await client.send_text(part.text)
-            
+
             # Handle turn signals
             if event.turn_complete:
                  pass # Signal client that agent finished speaking
@@ -1605,7 +1605,7 @@ async def main():
         user_id="test_user",
         session_id="test_session",
         new_message=genai_types.Content(
-            role="user", 
+            role="user",
             parts=[genai_types.Part.from_text(text=query)]
         ),
     ):
@@ -1883,7 +1883,7 @@ Automates the complete CI/CD infrastructure setup for GitHub-based deployments. 
 uvx agent-starter-pack setup-cicd [OPTIONS]
 ```
 
-**Prerequisites:** 
+**Prerequisites:**
 - Run from the project root (directory with `pyproject.toml`)
 - Required tools: `gh` CLI (authenticated), `gcloud` CLI (authenticated), `terraform`
 - `Owner` role on GCP projects

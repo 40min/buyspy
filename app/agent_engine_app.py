@@ -57,7 +57,7 @@ class AgentEngineApp(AdkApp):
         Extends the base operations to include feedback registration functionality.
         """
         operations = super().register_operations()
-        operations[""] = operations.get("", []) + ["register_feedback"]
+        operations[""] = [*operations.get("", []), "register_feedback"]
         return operations
 
 

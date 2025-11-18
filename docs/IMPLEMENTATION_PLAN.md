@@ -17,7 +17,7 @@ This document outlines the phased development plan for the BuySpy project, tailo
     -   Run `make install` to set up the virtual environment with `uv`.
     -   Run `make playground`. Interact with the default ReAct agent in the Streamlit UI to confirm the core agent server is working.
 
--   **Task 1.3: Telegram Polling Integration**
+-   **Task 1.3: Telegram Polling Integration (done)**
     -   Add dependencies: `uv add python-telegram-bot pydantic-settings`.
     -   **Architecture:** Use proper dependency injection pattern with centralized configuration:
         1.  **Centralized Config** (`app/config.py`): Create Pydantic-based `Settings` class that loads and validates all environment variables from `.env`. Provides type-safe access to configuration with `@lru_cache()` for singleton pattern.
@@ -40,7 +40,45 @@ This document outlines the phased development plan for the BuySpy project, tailo
         -   Extensibility: Easy to add new config or dependencies
     -   Test the integration: run `uv run python telegram_bot.py` and send a message to your bot.
 
-**Topics Covered:** ADK Starter Kit structure, `uv`, `make`, local development loop, Telegram polling.
+-   **Task 1.4: Testing & Quality Setup**
+    -   **Pre-commit Hooks Setup:**
+        -   Install pre-commit framework: `uv add --dev pre-commit`
+        -   Create `.pre-commit-config.yaml` with hooks for:
+            - `ruff` (linting and formatting)
+            - `mypy` (type checking)
+            - `codespell` (spell checking)
+            - `trailing-whitespace` and `end-of-file-fixer` (basic file hygiene)
+        -   Install hooks: `uv run pre-commit install`
+        -   Test hooks: `uv run pre-commit run --all-files`
+    -   **Unit Tests:**
+        -   Create `tests/unit/test_config.py`:
+            - Test [`Settings`](app/config.py) validation with valid/invalid environment variables
+            - Test [`get_settings()`](app/config.py) singleton behavior
+        -   Create `tests/unit/test_dependencies.py`:
+            - Test [`get_config()`](app/dependencies.py) returns Settings instance
+            - Test [`get_agent_engine()`](app/dependencies.py) returns singleton
+            - Test [`get_telegram_service()`](app/dependencies.py) creates service with proper dependencies
+        -   Create `tests/unit/test_telegram_service.py`:
+            - Test [`TelegramService`](app/services/telegram_service.py) initialization
+            - Test message handling logic with mocked agent engine
+            - Test error handling for invalid messages
+    -   **Integration Tests:**
+        -   Create `tests/integration/test_telegram_integration.py`:
+            - Test end-to-end message flow: Telegram → Service → Agent → Response
+            - Test async message handling
+            - Test graceful shutdown behavior
+        -   Update existing `tests/integration/test_agent_engine_app.py` if needed
+    -   **Code Quality Verification:**
+        -   Run `make lint` to verify code quality (ruff, mypy, codespell)
+        -   Run `make test` to verify all tests pass
+        -   Fix any issues found by linters or tests
+    -   **Documentation:**
+        -   Update `README.md` with testing instructions
+        -   Document how to run tests locally
+        -   Document pre-commit hooks usage
+        -   Add badge for test status (optional)
+
+**Topics Covered:** ADK Starter Kit structure, `uv`, `make`, local development loop, Telegram polling, Testing (unit & integration), Code quality automation, Pre-commit hooks.
 
 ---
 

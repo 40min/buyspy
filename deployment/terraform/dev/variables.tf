@@ -53,4 +53,3 @@ variable "app_sa_roles" {
     "roles/serviceusage.serviceUsageConsumer",
   ]
 }
-

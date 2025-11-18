@@ -73,4 +73,3 @@ jobs:
             --entrypoint-object=agent_engine \
             --requirements-file=app/app_utils/.requirements.txt \
             --set-env-vars="COMMIT_SHA=${{ github.sha }},ARTIFACTS_BUCKET_NAME=${{ vars.LOGS_BUCKET_NAME_PROD }}"
-
