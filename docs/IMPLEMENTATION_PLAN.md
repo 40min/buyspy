@@ -18,13 +18,27 @@ This document outlines the phased development plan for the BuySpy project, tailo
     -   Run `make playground`. Interact with the default ReAct agent in the Streamlit UI to confirm the core agent server is working.
 
 -   **Task 1.3: Telegram Polling Integration**
-    -   Add `python-telegram-bot` to the project dependencies using `uv add python-telegram-bot`.
-    -   Create a new script: `scripts/run_telegram_bot.py`.
-    -   Implement a basic polling loop in this script using `python-telegram-bot`. The script should:
-        1.  Fetch new messages from Telegram.
-        2.  For each message, make an HTTP request to the local agent server (running via `make playground`).
-        3.  Send the agent's response back to the user on Telegram.
-    -   Test the full loop: run `make playground` in one terminal, `uv run python scripts/run_telegram_bot.py` in another, and send a message to your bot.
+    -   Add dependencies: `uv add python-telegram-bot pydantic-settings`.
+    -   **Architecture:** Use proper dependency injection pattern with centralized configuration:
+        1.  **Centralized Config** (`app/config.py`): Create Pydantic-based `Settings` class that loads and validates all environment variables from `.env`. Provides type-safe access to configuration with `@lru_cache()` for singleton pattern.
+        2.  **Dependency Injection** (`app/dependencies.py`): Create individual getter functions following proper DI patterns:
+            - `get_config()`: Returns Settings instance
+            - `get_agent_engine()`: Returns singleton agent_engine from `app/agent_engine_app.py`
+            - `get_telegram_service()`: Creates TelegramService with injected dependencies
+        3.  **Service Module** (`app/services/telegram_service.py`): Already created - handles message routing between Telegram and agent.
+        4.  **Entrypoint** (`telegram_bot.py`): Simplified async application that:
+            - Uses `get_telegram_service()` to obtain configured service
+            - Implements signal handling (SIGTERM/SIGINT) for graceful shutdown
+            - Starts polling loop
+            - No HTTP server needed - pure Telegram bot application
+    -   **Message Flow:** User message → TelegramService → AgentEngineApp → Response → User
+    -   **Key Benefits:**
+        -   Proper DI: Each getter returns single entity (no tuples)
+        -   Type Safety: Pydantic validates configuration at startup
+        -   Testability: Easy to mock dependencies
+        -   12-Factor App: Configuration via environment variables
+        -   Extensibility: Easy to add new config or dependencies
+    -   Test the integration: run `uv run python telegram_bot.py` and send a message to your bot.
 
 **Topics Covered:** ADK Starter Kit structure, `uv`, `make`, local development loop, Telegram polling.
 
@@ -122,10 +136,10 @@ This document outlines the phased development plan for the BuySpy project, tailo
 
 -   **Task 6.2: Create Docker Compose Configuration**
     -   Create a `docker-compose.yml` file.
-    -   Define two services:
-        1.  `agent-server`: Builds from the `Dockerfile` and runs the FastAPI app.
-        2.  `telegram-poller`: Also builds from the `Dockerfile` but overrides the command to run `uv run python scripts/run_telegram_bot.py`.
-    -   Configure networking so the `telegram-poller` can communicate with the `agent-server`.
+    -   Define the service:
+        1.  `telegram-bot`: Builds from the `Dockerfile` and runs `uv run python telegram_bot.py`.
+    -   Configure environment variables and volume mounts for the `.env` file.
+    -   Ensure proper signal handling for graceful shutdown in containers.
 
 -   **Task 6.3: Document Deployment**
     -   Add clear, concise instructions to the `README.md` on how to deploy the application using `docker-compose up`.
