@@ -6,9 +6,11 @@ using Pydantic Settings. Configuration is loaded from the .env file
 and validated at application startup.
 """
 
+import os
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -31,9 +33,25 @@ class Settings(BaseSettings):
     artifacts_bucket_name: str | None = None
     log_level: str = "INFO"
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
-    )
+    @model_validator(mode="after")
+    def validate_required_fields(self):
+        """Validate that required fields are not empty strings."""
+        required_fields = ["gcp_project_id", "telegram_bot_token"]
+
+        for field_name in required_fields:
+            value = getattr(self, field_name)
+            if not value or not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field_name} cannot be empty")
+
+        return self
+
+    class Config:
+        """Pydantic configuration."""
+
+        env_file = os.getenv("ENV_FILE", ".env")
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+        extra = "ignore"
 
 
 @lru_cache
