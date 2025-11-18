@@ -15,4 +15,4 @@
 # Import disabled to avoid import errors during testing
 # from .agent import app
 
-__all__ = []  # Updated to avoid import errors
+__all__: list[str] = []  # Updated to avoid import errors

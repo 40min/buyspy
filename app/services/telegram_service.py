@@ -28,8 +28,20 @@ class TelegramService:
     ) -> None:
         """Handle incoming messages from Telegram users."""
         try:
+            # Check for required attributes
+            if (
+                not update.message
+                or not update.effective_chat
+                or not update.effective_user
+            ):
+                self.logger.warning("Update missing required attributes")
+                return
+
             # Extract user message and chat_id
             user_message = update.message.text
+            if not user_message:
+                self.logger.warning("Message has no text")
+                return
             chat_id = update.effective_chat.id
 
             # Log the incoming message
@@ -83,24 +95,36 @@ class TelegramService:
 
         except Exception as e:
             # Include comprehensive error handling
+            user_id = update.effective_user.id if update.effective_user else "unknown"
             self.logger.error(
-                f"Error handling message from user {update.effective_user.id}: {e}",
+                f"Error handling message from user {user_id}: {e}",
                 exc_info=True,
             )
 
             # Send user-friendly error message to Telegram
             error_message = "I apologize, but I encountered an error processing your message. Please try again in a moment."
             try:
-                await update.message.reply_text(error_message)
+                if update.message:
+                    await update.message.reply_text(error_message)
             except Exception as send_error:
+                chat_id_str: str = (
+                    str(update.effective_chat.id)
+                    if update.effective_chat
+                    else "unknown"
+                )
                 self.logger.error(
-                    f"Failed to send error message to chat {update.effective_chat.id}: {send_error}"
+                    f"Failed to send error message to chat {chat_id_str}: {send_error}"
                 )
 
     async def start_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
         """Handle the /start command."""
+        # Check for required attributes
+        if not update.message or not update.effective_user:
+            self.logger.warning("Update missing required attributes for start command")
+            return
+
         welcome_message = (
             "👋 Welcome to BuySpy AI Assistant!\n\n"
             "I'm here to help you with information and answer your questions. "
@@ -116,9 +140,8 @@ class TelegramService:
             await update.message.reply_text(welcome_message)
             self.logger.info(f"Sent welcome message to user {update.effective_user.id}")
         except Exception as e:
-            self.logger.error(
-                f"Failed to send welcome message to user {update.effective_user.id}: {e}"
-            )
+            user_id = update.effective_user.id if update.effective_user else "unknown"
+            self.logger.error(f"Failed to send welcome message to user {user_id}: {e}")
 
     def setup_handlers(self) -> None:
         """Set up message and command handlers."""
@@ -148,20 +171,13 @@ class TelegramService:
 
             self.logger.info("Starting Telegram bot polling...")
 
-            if not self.application or not self.application.updater:
-                raise RuntimeError("Application or updater not properly initialized")
-
-            # Start polling
-            await self.application.initialize()
-            await self.application.start()
-            await self.application.updater.start_polling()
-
             self.logger.info(
                 "Telegram bot is now running and listening for messages..."
             )
 
-            # Run until stopped (keep the coroutine alive)
-            await self.application.updater.idle()
+            # Start polling and run until stopped
+            if self.application:
+                await self.application.run_polling()
 
         except Exception as e:
             self.logger.error(f"Error starting Telegram bot: {e}", exc_info=True)

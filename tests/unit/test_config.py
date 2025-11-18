@@ -80,7 +80,7 @@ class TestSettingsClass:
         os.environ["ARTIFACTS_BUCKET_NAME"] = "test-bucket"
         os.environ["LOG_LEVEL"] = "DEBUG"
 
-        settings = Settings()  # type: ignore
+        settings = Settings()
 
         assert settings.gcp_project_id == "test-project-123"
         assert settings.telegram_bot_token == "test-bot-token-456"
@@ -94,7 +94,7 @@ class TestSettingsClass:
         os.environ["GCP_PROJECT_ID"] = "minimal-test-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "minimal-token"
 
-        settings = Settings()  # type: ignore
+        settings = Settings()
 
         # Check required fields
         assert settings.gcp_project_id == "minimal-test-project"
@@ -112,7 +112,7 @@ class TestSettingsClass:
         os.environ["GCP_REGION"] = "invalid-region-format"
 
         # This should still work as it's a string field
-        settings = Settings()  # type: ignore
+        settings = Settings()
         assert settings.gcp_region == "invalid-region-format"
 
     def test_settings_case_insensitive_env_vars(self) -> None:
@@ -123,7 +123,7 @@ class TestSettingsClass:
         os.environ["gcp_region"] = "asia-southeast1"
 
         try:
-            settings = Settings()  # type: ignore
+            settings = Settings()
 
             assert settings.gcp_project_id == "lowercase-project"
             assert settings.telegram_bot_token == "lowercase-token"
@@ -147,7 +147,7 @@ class TestSettingsClass:
 
         # Empty string for required field should raise ValidationError
         with pytest.raises(ValidationError):
-            Settings()  # type: ignore
+            Settings()
 
     def test_settings_optional_fields_with_empty_strings(self) -> None:
         """Test Settings with empty strings for optional fields."""
@@ -156,7 +156,7 @@ class TestSettingsClass:
         os.environ["ARTIFACTS_BUCKET_NAME"] = ""
         os.environ["LOG_LEVEL"] = ""
 
-        settings = Settings()  # type: ignore
+        settings = Settings()
 
         # Optional fields should accept empty strings
         assert settings.artifacts_bucket_name == ""
@@ -169,7 +169,7 @@ class TestSettingsClass:
             "1234567890:AAEhBOg2hD8vQqP8X8pQqP8X8pQqP8X8pQqP8X"
         )
 
-        settings = Settings()  # type: ignore
+        settings = Settings()
 
         assert settings.gcp_project_id == "test-project-with-dashes_123"
         assert (
@@ -280,7 +280,7 @@ TELEGRAM_BOT_TOKEN=env-file-token
         os.environ["GCP_PROJECT_ID"] = "env-var-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "env-var-token"
 
-        settings = Settings()  # type: ignore
+        settings = Settings()
 
         # Should use environment variable values, not .env file values
         assert settings.gcp_project_id == "env-var-project"
@@ -291,13 +291,13 @@ TELEGRAM_BOT_TOKEN=env-file-token
         os.environ["GCP_PROJECT_ID"] = "type-test-project"
         os.environ["TELEGRAM_BOT_TOKEN"] = "type-test-token"
 
-        settings = Settings()  # type: ignore
+        settings = Settings()
 
         # Verify types
         assert isinstance(settings.gcp_project_id, str)
         assert isinstance(settings.telegram_bot_token, str)
         assert isinstance(settings.gcp_region, str)
-        assert isinstance(settings.artifacts_bucket_name, (str, type(None)))
+        assert isinstance(settings.artifacts_bucket_name, str | None)
         assert isinstance(settings.log_level, str)
 
 
@@ -313,7 +313,7 @@ class TestSettingsDefaults:
         os.environ["TELEGRAM_BOT_TOKEN"] = "test-token"
 
         # Don't set GCP_REGION, should use default
-        settings = Settings()  # type: ignore
+        settings = Settings()
         assert settings.gcp_region == "europe-west1"
 
     def test_default_log_level_value(self) -> None:
@@ -322,7 +322,7 @@ class TestSettingsDefaults:
         os.environ["TELEGRAM_BOT_TOKEN"] = "test-token"
 
         # Don't set LOG_LEVEL, should use default
-        settings = Settings()  # type: ignore
+        settings = Settings()
         assert settings.log_level == "INFO"
 
     def test_default_artifacts_bucket_name_value(self) -> None:
@@ -331,7 +331,7 @@ class TestSettingsDefaults:
         os.environ["TELEGRAM_BOT_TOKEN"] = "test-token"
 
         # Don't set ARTIFACTS_BUCKET_NAME, should use default
-        settings = Settings()  # type: ignore
+        settings = Settings()
         assert settings.artifacts_bucket_name is None
 
 
@@ -346,7 +346,7 @@ class TestSettingsFromTestEnv:
         # Clear cache to force reload from .env.test
         get_settings.cache_clear()
 
-        settings = Settings()  # type: ignore
+        settings = Settings()
 
         # Should load values from .env.test
         assert settings.gcp_project_id == "test-project-123"
@@ -366,7 +366,7 @@ class TestSettingsFromTestEnv:
         # Clear cache to force reload from .env.test
         get_settings.cache_clear()
 
-        settings = Settings()  # type: ignore
+        settings = Settings()
 
         # These values should come from .env.test
         assert settings.gcp_project_id == "test-project-123"

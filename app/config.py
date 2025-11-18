@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
         return self
 
-    model_config = ConfigDict(  # type: ignore
+    model_config = ConfigDict(
         env_file=os.getenv("ENV_FILE", ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
@@ -68,4 +68,4 @@ def get_settings() -> Settings:
         ValidationError: If required environment variables are missing
                         or have invalid values
     """
-    return Settings()  # type: ignore
+    return Settings()
