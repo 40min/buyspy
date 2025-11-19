@@ -7,7 +7,6 @@ It uses dependency injection to initialize the agent engine and start
 the Telegram polling service.
 """
 
-import asyncio
 import logging
 import signal
 
@@ -23,9 +22,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main() -> None:
+def main() -> None:
     """Main entry point for the Telegram bot."""
     telegram_service: TelegramService | None = None
+
+    def signal_handler(sig: int, frame: object) -> None:
+        logger.info(f"Received signal {sig}, initiating graceful shutdown...")
+        if telegram_service:
+            telegram_service.stop()
 
     try:
         logger.info("Starting BuySpy Telegram Bot...")
@@ -34,21 +38,13 @@ async def main() -> None:
         telegram_service = get_telegram_service()
         logger.info("Service initialized successfully")
 
-        # Set up graceful shutdown with signal handlers
-        loop = asyncio.get_running_loop()
-
-        async def signal_handler(sig: int) -> None:
-            logger.info(f"Received signal {sig}, initiating graceful shutdown...")
-            if telegram_service:
-                await telegram_service.stop()
-
         # Register signal handlers for SIGTERM and SIGINT
         for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, lambda s=sig: signal_handler(s))
+            signal.signal(sig, signal_handler)
 
         # Start the bot polling
         logger.info("Starting Telegram bot polling...")
-        await telegram_service.start_polling()
+        telegram_service.start_polling()
 
     except Exception as e:
         logger.error(f"Error: {e}", exc_info=True)
@@ -57,13 +53,13 @@ async def main() -> None:
         # Ensure cleanup
         if telegram_service:
             logger.info("Cleaning up resources...")
-            await telegram_service.stop()
+            telegram_service.stop()
         logger.info("BuySpy Telegram Bot stopped")
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         logger.info("Application terminated by user")
     except Exception as e:

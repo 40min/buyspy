@@ -160,7 +160,7 @@ class TelegramService:
 
         self.logger.info("Telegram handlers set up successfully")
 
-    async def start_polling(self) -> None:
+    def start_polling(self) -> None:
         """Start the bot polling loop."""
         try:
             # Initialize the application first
@@ -177,19 +177,18 @@ class TelegramService:
 
             # Start polling and run until stopped
             if self.application:
-                await self.application.run_polling()
+                self.application.run_polling()
 
         except Exception as e:
             self.logger.error(f"Error starting Telegram bot: {e}", exc_info=True)
             raise
 
-    async def stop(self) -> None:
+    def stop(self) -> None:
         """Stop the bot gracefully."""
         try:
             if self.application:
                 self.logger.info("Stopping Telegram bot...")
-                await self.application.stop()
-                await self.application.shutdown()
+                self.application.stop()
                 self.logger.info("Telegram bot stopped successfully")
         except Exception as e:
             self.logger.error(f"Error stopping Telegram bot: {e}", exc_info=True)

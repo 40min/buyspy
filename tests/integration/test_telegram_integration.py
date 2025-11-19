@@ -421,16 +421,14 @@ async def test_graceful_shutdown_behavior(
     """
     # Set up mock application
     mock_application = MagicMock()
-    mock_application.stop = AsyncMock()
-    mock_application.shutdown = AsyncMock()
+    mock_application.stop = Mock()
     telegram_service.application = mock_application
 
     # Test graceful stop
-    await telegram_service.stop()
+    telegram_service.stop()
 
     # Verify proper shutdown sequence
     mock_application.stop.assert_called_once()
-    mock_application.shutdown.assert_called_once()
 
 
 @pytest.mark.asyncio

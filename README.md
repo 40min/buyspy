@@ -133,6 +133,47 @@ This project uses two main components for local development: the ADK agent serve
 
 For full command options and usage, refer to the [Makefile](Makefile).
 
+## 🧪 Testing
+
+### Overview
+This project includes a comprehensive testing setup with unit tests, integration tests, and automated code quality checks to ensure code reliability, maintainability, and adherence to best practices.
+
+### Running Tests
+Run tests using the following commands:
+
+- **All tests:** `make test`
+- **Unit tests only:** `uv run pytest tests/unit/ -v`
+- **Integration tests only:** `uv run pytest tests/integration/ -v`
+- **Specific test files:** `uv run pytest tests/unit/test_config.py -v`
+
+### Code Quality
+Ensure code quality with automated linting and type checking:
+
+- **All linters:** `make lint`
+- **Ruff (linting and formatting):** `uv run ruff check .`
+- **MyPy (type checking):** `uv run mypy .`
+- **Codespell (spell checking):** `uv run codespell`
+
+### Pre-commit Hooks
+Pre-commit hooks are configured to automatically run code quality checks before each commit:
+
+- **Installed hooks:** ruff, mypy, codespell, pytest
+- **Install hooks:** `uv run pre-commit install`
+- **Run hooks manually:** `uv run pre-commit run --all-files`
+- **Skip hooks (emergencies only):** `git commit --no-verify`
+
+### Test Coverage
+The test suite covers key components:
+
+- **Config module:** Settings validation and environment variable handling
+- **Dependencies module:** Dependency injection and service initialization
+- **Telegram service:** Message handling, error handling, and API interactions
+- **Integration tests:** End-to-end flows including agent communication and external API calls
+
+## 📊 Test Status
+
+*Test status badges will be added here once CI/CD integration is complete.*
+
 ## 🔄 Development Process
 
 This project follows a structured development approach:
