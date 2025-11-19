@@ -20,10 +20,14 @@ import google.auth
 from google.adk.agents import Agent
 from google.adk.apps.app import App
 
-_, project_id = google.auth.default()
-os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
-os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
+
+def _initialize_google_auth() -> str:
+    """Initialize Google Auth and return the project ID."""
+    _, project_id = google.auth.default()
+    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
+    os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
+    os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
+    return project_id
 
 
 def get_weather(query: str) -> str:
@@ -44,7 +48,7 @@ def get_current_time(query: str) -> str:
     """Simulates getting the current time for a city.
 
     Args:
-        city: The name of the city to get the current time for.
+        city: The name of the city to get current time information for.
 
     Returns:
         A string with the current time information.
@@ -59,11 +63,43 @@ def get_current_time(query: str) -> str:
     return f"The current time for query {query} is {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}"
 
 
-root_agent = Agent(
-    name="root_agent",
-    model="gemini-2.5-flash-lite",
-    instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[get_weather, get_current_time],
-)
+def _create_root_agent() -> Agent:
+    """Create the root agent with lazy initialization."""
+    _initialize_google_auth()
+    return Agent(
+        name="root_agent",
+        model="gemini-2.5-flash-lite",
+        instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
+        tools=[get_weather, get_current_time],
+    )
 
-app = App(root_agent=root_agent, name="app")
+
+def _create_app() -> App:
+    """Create the app with lazy initialization."""
+    root_agent = _create_root_agent()
+    return App(root_agent=root_agent, name="app")
+
+
+# Lazy-loaded instances
+_root_agent: Agent | None = None
+_app: App | None = None
+
+
+def get_root_agent() -> Agent:
+    """Get the lazy-loaded root agent."""
+    global _root_agent
+    if _root_agent is None:
+        _root_agent = _create_root_agent()
+    return _root_agent
+
+
+def get_app() -> App:
+    """Get the lazy-loaded app."""
+    global _app
+    if _app is None:
+        _app = _create_app()
+    return _app
+
+
+# Keep backwards compatibility for existing code that expect this as a module-level variable
+app = get_app

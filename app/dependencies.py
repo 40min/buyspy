@@ -6,7 +6,8 @@ following proper dependency injection patterns. Each function returns
 a single entity, making it easy to inject dependencies where needed.
 """
 
-from app.agent_engine_app import AgentEngineApp, agent_engine
+from app.agent_engine_app import AgentEngineApp
+from app.agent_engine_app import get_agent_engine as _get_agent_engine
 from app.config import Settings, get_settings
 from app.services.telegram_service import TelegramService
 
@@ -31,14 +32,14 @@ def get_agent_engine() -> AgentEngineApp:
     """
     Get the singleton agent engine instance.
 
-    Returns the AgentEngineApp singleton that is initialized at module
-    level in app/agent_engine_app.py. This is the core agent that processes
-    user messages.
+    Returns the AgentEngineApp singleton that is lazily initialized
+    when first called. This prevents expensive Google API calls during
+    module import.
 
     Returns:
         AgentEngineApp: The singleton agent engine instance
     """
-    return agent_engine
+    return _get_agent_engine()
 
 
 def get_telegram_service() -> TelegramService:

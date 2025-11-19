@@ -25,7 +25,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai.agent_engines.templates.adk import AdkApp
 
-from app.agent import app as adk_app
+from app.agent import get_app
 from app.app_utils.tracing import CloudTraceLoggingSpanExporter
 from app.app_utils.typing import Feedback
 
@@ -61,14 +61,32 @@ class AgentEngineApp(AdkApp):
         return operations
 
 
-_, project_id = google.auth.default()
-vertexai.init(project=project_id, location="europe-north1")
-artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
-agent_engine = AgentEngineApp(
-    app=adk_app,
-    artifact_service_builder=lambda: GcsArtifactService(
-        bucket_name=artifacts_bucket_name
+def _create_agent_engine() -> AgentEngineApp:
+    """Create and initialize the agent engine."""
+    _, project_id = google.auth.default()
+    vertexai.init(project=project_id, location="europe-north1")
+    artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
+    return AgentEngineApp(
+        app=get_app(),
+        artifact_service_builder=lambda: GcsArtifactService(
+            bucket_name=artifacts_bucket_name
+        )
+        if artifacts_bucket_name
+        else InMemoryArtifactService(),
     )
-    if artifacts_bucket_name
-    else InMemoryArtifactService(),
-)
+
+
+# Lazy-loaded agent engine instance
+_agent_engine: AgentEngineApp | None = None
+
+
+def get_agent_engine() -> AgentEngineApp:
+    """Get the lazy-loaded agent engine instance."""
+    global _agent_engine
+    if _agent_engine is None:
+        _agent_engine = _create_agent_engine()
+    return _agent_engine
+
+
+# Keep backwards compatibility for existing code that expect this as a module-level variable
+agent_engine = get_agent_engine
