@@ -103,3 +103,4 @@ def get_app() -> App:
 
 # Keep backwards compatibility for existing code that expect this as a module-level variable
 app = get_app
+root_agent = get_root_agent()

@@ -4,6 +4,7 @@ Unit tests for the config module.
 Tests cover Settings class validation, environment variable handling,
 and singleton behavior of get_settings() function.
 """
+# mypy: disable-error-code="call-arg"
 
 import os
 from collections.abc import Generator
