@@ -40,7 +40,7 @@ This document outlines the phased development plan for the BuySpy project, tailo
         -   Extensibility: Easy to add new config or dependencies
     -   Test the integration: run `uv run python telegram_bot.py` and send a message to your bot.
 
--   **Task 1.4: Testing & Quality Setup**
+-   **Task 1.4: Testing & Quality Setup (done)**
     -   **Pre-commit Hooks Setup:**
         -   Install pre-commit framework: `uv add --dev pre-commit`
         -   Create `.pre-commit-config.yaml` with hooks for:
@@ -86,17 +86,18 @@ This document outlines the phased development plan for the BuySpy project, tailo
 
 **Goal:** Implement the core shopping assistant logic with web search capabilities.
 
--   **Task 2.1: Customize the Core Agent**
+-   **Task 2.1: Customize the Core Agent (done)**
     -   Modify `app/agent.py` to change the agent's core prompt and persona to be a "shopping assistant."
     -   Equip the agent with the **built-in Google Search tool**.
 
--   **Task 2.2: Test and Refine**
+-   **Task 2.2: Test and Refine (done)**
     -   Use the Streamlit playground (`make playground`) for rapid, iterative testing of the agent's search capabilities.
     -   Test the end-to-end flow through the Telegram bot.
 
 -   **Task 2.3: Implement Observability**
     -   The starter kit comes with OpenTelemetry pre-configured.
     -   Run test queries and inspect the logs/traces in the Google Cloud console to understand the agent's reasoning and tool usage.
+    -   Do it with a User guiding and helping to explore console
 
 **Topics Covered:** Agent powered by an LLM, Built-in Tools, Observability (Logging, Tracing).
 

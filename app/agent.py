@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
 import os
-from zoneinfo import ZoneInfo
 
 import google.auth
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.tools.google_search_tool import google_search
 
 
 def _initialize_google_auth() -> str:
@@ -30,47 +29,29 @@ def _initialize_google_auth() -> str:
     return project_id
 
 
-def get_weather(query: str) -> str:
-    """Simulates a web search. Use it get information on weather.
-
-    Args:
-        query: A string containing the location to get weather information for.
-
-    Returns:
-        A string with the simulated weather information for the queried location.
-    """
-    if "sf" in query.lower() or "san francisco" in query.lower():
-        return "It's 60 degrees and foggy."
-    return "It's 90 degrees and sunny."
-
-
-def get_current_time(query: str) -> str:
-    """Simulates getting the current time for a city.
-
-    Args:
-        city: The name of the city to get current time information for.
-
-    Returns:
-        A string with the current time information.
-    """
-    if "sf" in query.lower() or "san francisco" in query.lower():
-        tz_identifier = "America/Los_Angeles"
-    else:
-        return f"Sorry, I don't have timezone information for query: {query}."
-
-    tz = ZoneInfo(tz_identifier)
-    now = datetime.datetime.now(tz)
-    return f"The current time for query {query} is {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}"
-
-
 def _create_root_agent() -> Agent:
     """Create the root agent with lazy initialization."""
     _initialize_google_auth()
     return Agent(
         name="root_agent",
         model="gemini-2.5-flash-lite",
-        instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-        tools=[get_weather, get_current_time],
+        instruction="""You are BuySpy, a knowledgeable and helpful shopping assistant AI. Your expertise lies in helping users make informed purchasing decisions.
+
+    You have a tool called `google_search`.
+    You MUST use this tool to answer questions about:
+    - Current prices
+    - Latest product reviews
+    - Where to buy items
+    - Comparisons of products from the current year
+
+    CRITICAL RULES FOR LINKS:
+    1. DO NOT guess or construct URLs.
+    2. URLs are extremely sensitive. If you provide a link, it MUST be exactly copied from the search tool's output.
+    3. If the search tool does not provide a direct URL to a product page, do not invent one. Just name the store.
+    4. Broken links are worse than no links. Verify the link source before outputting.
+
+    Do not hallucinate prices. If you don't know the price, call the `google_search` tool.""",
+        tools=[google_search],
     )
 
 
