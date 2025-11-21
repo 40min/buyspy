@@ -54,22 +54,19 @@ def test_agent_instruction_is_shopping_assistant(mock_google_auth: Mock) -> None
     # Check that the instruction contains shopping-related keywords
     assert isinstance(instruction, str)
     assert "BuySpy" in instruction
-    assert "shopping assistant" in instruction.lower()
-    assert "purchasing decisions" in instruction.lower()
-    assert "Google Search" in instruction
+    assert "intelligent shopping assistant" in instruction.lower()
     assert "products" in instruction.lower()
-    assert "reviews" in instruction.lower()
 
 
-def test_agent_has_google_search_tool(
-    mock_google_auth: Mock, mock_google_search_tool: Mock
-) -> None:
-    """Test that the agent is equipped with Google Search tool."""
+def test_agent_has_hybrid_tools(mock_google_auth: Mock) -> None:
+    """Test that the agent is equipped with both Google Search and DuckDuckGo tools."""
     agent = get_root_agent()
     tools = agent.tools
 
-    assert len(tools) == 1
-    assert any("GoogleSearchTool" in str(tool) for tool in tools)
+    assert len(tools) == 2
+    tool_names = [str(tool) for tool in tools]
+    assert any("GoogleSearchTool" in name for name in tool_names)
+    assert any("find_shopping_links" in name for name in tool_names)
 
 
 def test_agent_instruction_mentions_search_capabilities(mock_google_auth: Mock) -> None:
@@ -78,9 +75,32 @@ def test_agent_instruction_mentions_search_capabilities(mock_google_auth: Mock) 
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
-    assert "Search for product information" in instruction
-    assert "web search" in instruction.lower()
-    assert "real-time information" in instruction.lower()
+    assert "google_search" in instruction
+    assert "find_shopping_links" in instruction
+
+
+def test_agent_instruction_contains_region_workflow(mock_google_auth: Mock) -> None:
+    """Test that the agent instruction contains the 3-step region-aware workflow."""
+    agent = get_root_agent()
+    instruction = agent.instruction
+
+    assert isinstance(instruction, str)
+    assert "STEP 1: CHECK REGION" in instruction
+    assert "STEP 2: RESEARCH" in instruction
+    assert "STEP 3: SHOPPING" in instruction
+    assert "find_shopping_links" in instruction
+
+
+def test_agent_instruction_contains_region_mapping(mock_google_auth: Mock) -> None:
+    """Test that the agent instruction contains region mapping logic."""
+    agent = get_root_agent()
+    instruction = agent.instruction
+
+    assert isinstance(instruction, str)
+    assert "Finland -> 'fi-fi'" in instruction
+    assert "USA -> 'us-en'" in instruction
+    assert "UK -> 'uk-en'" in instruction
+    assert "Germany -> 'de-de'" in instruction
 
 
 def test_agent_instruction_mentions_helpful_approach(mock_google_auth: Mock) -> None:
@@ -89,10 +109,7 @@ def test_agent_instruction_mentions_helpful_approach(mock_google_auth: Mock) -> 
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
-    assert "helpful" in instruction.lower()
-    assert "polite" in instruction.lower()
-    assert "unbiased" in instruction.lower()
-    assert "balanced" in instruction.lower()
+    assert "intelligent" in instruction.lower()
 
 
 def test_agent_instruction_mentions_comparison_capabilities(
@@ -103,6 +120,4 @@ def test_agent_instruction_mentions_comparison_capabilities(
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
-    assert "Compare products" in instruction
-    assert "detailed analysis" in instruction.lower()
-    assert "alternatives" in instruction.lower()
+    assert "href" in instruction.lower()

@@ -19,6 +19,8 @@ from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.tools.google_search_tool import google_search
 
+from app.tools.link_finder import find_shopping_links
+
 
 def _initialize_google_auth() -> str:
     """Initialize Google Auth and return the project ID."""
@@ -35,23 +37,34 @@ def _create_root_agent() -> Agent:
     return Agent(
         name="root_agent",
         model="gemini-2.5-flash-lite",
-        instruction="""You are BuySpy, a knowledgeable and helpful shopping assistant AI. Your expertise lies in helping users make informed purchasing decisions.
+        tools=[google_search, find_shopping_links],
+        instruction="""You are BuySpy, an intelligent shopping assistant.
 
-    You have a tool called `google_search`.
-    You MUST use this tool to answer questions about:
-    - Current prices
-    - Latest product reviews
-    - Where to buy items
-    - Comparisons of products from the current year
+    ### YOUR WORKFLOW (Follow strictly)
 
-    CRITICAL RULES FOR LINKS:
-    1. DO NOT guess or construct URLs.
-    2. URLs are extremely sensitive. If you provide a link, it MUST be exactly copied from the search tool's output.
-    3. If the search tool does not provide a direct URL to a product page, do not invent one. Just name the store.
-    4. Broken links are worse than no links. Verify the link source before outputting.
+    **STEP 1: CHECK REGION**
+    - Before finding any prices or links, you MUST know the user's region.
+    - Check the conversation history. Did the user mention a country (Finland, US, UK)?
+    - **IF REGION IS UNKNOWN:** Stop and ask: "Which country are you shopping in?"
+    - **IF REGION IS KNOWN:** Map it to a code (Finland -> 'fi-fi', USA -> 'us-en', UK -> 'uk-en', Germany -> 'de-de')
 
-    Do not hallucinate prices. If you don't know the price, call the `google_search` tool.""",
-        tools=[google_search],
+    **STEP 2: RESEARCH (The "What")**
+    - If the user asks generic questions (e.g., "Best headphones?"), use `google_search`.
+    - Summarize the best options, pros/cons, and select specific models to recommend.
+
+    **STEP 3: SHOPPING (The "Where")**
+    - Once you have specific model names AND the region code, use the `find_shopping_links` tool.
+    - Call this tool for EACH recommended product individually.
+    - **CRITICAL:** Extract the 'href' (URL) exactly as provided by the tool. Do not guess URLs.
+
+    ### RESPONSE FORMAT
+    When recommending products, use this structure:
+
+    **[Product Name]**
+    *   **Why it's good:** [Summary from Step 2]
+    *   **Best Price:** [Price from Step 3] at [Store Name from Step 3]
+    *   **Link:** [Direct URL from Step 3]
+    """,
     )
 
 
