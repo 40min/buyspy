@@ -59,13 +59,13 @@ def test_agent_instruction_is_shopping_assistant(mock_google_auth: Mock) -> None
 
 
 def test_agent_has_hybrid_tools(mock_google_auth: Mock) -> None:
-    """Test that the agent is equipped with both Google Search and DuckDuckGo tools."""
+    """Test that the agent is equipped with both research_agent and find_shopping_links."""
     agent = get_root_agent()
     tools = agent.tools
 
     assert len(tools) == 2
     tool_names = [str(tool) for tool in tools]
-    assert any("GoogleSearchTool" in name for name in tool_names)
+    assert any("AgentTool" in name for name in tool_names)
     assert any("find_shopping_links" in name for name in tool_names)
 
 
@@ -75,12 +75,12 @@ def test_agent_instruction_mentions_search_capabilities(mock_google_auth: Mock) 
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
-    assert "google_search" in instruction
+    assert "research_agent" in instruction
     assert "find_shopping_links" in instruction
 
 
 def test_agent_instruction_contains_region_workflow(mock_google_auth: Mock) -> None:
-    """Test that the agent instruction contains the 3-step region-aware workflow."""
+    """Test that the agent instruction contains the 4-step region-aware workflow."""
     agent = get_root_agent()
     instruction = agent.instruction
 
@@ -88,6 +88,7 @@ def test_agent_instruction_contains_region_workflow(mock_google_auth: Mock) -> N
     assert "STEP 1: CHECK REGION" in instruction
     assert "STEP 2: RESEARCH" in instruction
     assert "STEP 3: SHOPPING" in instruction
+    assert "STEP 4: SYNTHESIS" in instruction
     assert "find_shopping_links" in instruction
 
 
@@ -120,4 +121,5 @@ def test_agent_instruction_mentions_comparison_capabilities(
     instruction = agent.instruction
 
     assert isinstance(instruction, str)
-    assert "href" in instruction.lower()
+    assert "link" in instruction.lower()
+    assert "direct url" in instruction.lower()

@@ -352,10 +352,7 @@ class TestTelegramService:
         # Verify no handlers were added (no exception should be raised)
         assert telegram_service.application is None
 
-    @pytest.mark.asyncio
-    async def test_start_polling_success(
-        self, telegram_service: TelegramService
-    ) -> None:
+    def test_start_polling_success(self, telegram_service: TelegramService) -> None:
         """Test successful bot polling start."""
         with patch(
             "app.services.telegram_service.Application"
@@ -363,14 +360,14 @@ class TestTelegramService:
             # Mock the application instance
             mock_application = Mock()
             mock_application_class.builder.return_value.token.return_value.build.return_value = mock_application
-            mock_application.run_polling = AsyncMock()
+            mock_application.run_polling = Mock()
 
             # Mock the setup_handlers method
             with patch.object(
                 telegram_service, "setup_handlers"
             ) as mock_setup_handlers:
-                # Execute the method
-                await telegram_service.start_polling()
+                # Execute the method (synchronously)
+                telegram_service.start_polling()
 
                 # Verify application was created
                 mock_application_class.builder.return_value.token.assert_called_once_with(
@@ -384,8 +381,7 @@ class TestTelegramService:
                 # Verify polling was started
                 mock_application.run_polling.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_start_polling_error(self, telegram_service: TelegramService) -> None:
+    def test_start_polling_error(self, telegram_service: TelegramService) -> None:
         """Test error handling during bot polling start."""
         with patch(
             "app.services.telegram_service.Application"
@@ -397,7 +393,7 @@ class TestTelegramService:
 
             # Execute the method and expect exception to be raised
             with pytest.raises(Exception, match="Build error"):
-                await telegram_service.start_polling()
+                telegram_service.start_polling()
 
     @pytest.mark.asyncio
     async def test_stop_with_application(

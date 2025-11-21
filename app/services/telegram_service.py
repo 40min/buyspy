@@ -183,12 +183,13 @@ class TelegramService:
             self.logger.error(f"Error starting Telegram bot: {e}", exc_info=True)
             raise
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """Stop the bot gracefully."""
         try:
             if self.application:
                 self.logger.info("Stopping Telegram bot...")
-                self.application.stop()
+                await self.application.stop()
+                await self.application.shutdown()
                 self.logger.info("Telegram bot stopped successfully")
         except Exception as e:
             self.logger.error(f"Error stopping Telegram bot: {e}", exc_info=True)

@@ -7,6 +7,7 @@ It uses dependency injection to initialize the agent engine and start
 the Telegram polling service.
 """
 
+import asyncio
 import logging
 import signal
 
@@ -22,14 +23,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def async_stop(service: TelegramService) -> None:
+    """Async wrapper for stopping the service."""
+    await service.stop()
+
+
 def main() -> None:
-    """Main entry point for the Telegram bot."""
+    """Main entry point for the Telegram bot."""    
+
     telegram_service: TelegramService | None = None
 
     def signal_handler(sig: int, frame: object) -> None:
         logger.info(f"Received signal {sig}, initiating graceful shutdown...")
         if telegram_service:
-            telegram_service.stop()
+            asyncio.run(async_stop(telegram_service))
 
     try:
         logger.info("Starting BuySpy Telegram Bot...")
@@ -53,7 +60,7 @@ def main() -> None:
         # Ensure cleanup
         if telegram_service:
             logger.info("Cleaning up resources...")
-            telegram_service.stop()
+            asyncio.run(async_stop(telegram_service))
         logger.info("BuySpy Telegram Bot stopped")
 
 
