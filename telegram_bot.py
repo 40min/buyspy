@@ -29,7 +29,7 @@ async def async_stop(service: TelegramService) -> None:
 
 
 def main() -> None:
-    """Main entry point for the Telegram bot."""    
+    """Main entry point for the Telegram bot."""
 
     telegram_service: TelegramService | None = None
 
