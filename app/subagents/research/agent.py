@@ -1,4 +1,5 @@
 from google.adk.agents import Agent
+from google.adk.apps.app import App
 from google.adk.tools.google_search_tool import google_search
 
 
@@ -28,3 +29,5 @@ Return a list where every item looks like this:
 
 # Global research agent instance
 research_agent = _create_research_agent(current_year="2025")
+
+app = App(root_agent=research_agent, name="research")

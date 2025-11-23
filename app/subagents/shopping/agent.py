@@ -1,4 +1,5 @@
 from google.adk.agents import Agent
+from google.adk.apps.app import App
 
 from app.tools.search_tools import fetch_tool, find_shopping_links
 
@@ -49,3 +50,5 @@ def _create_shopping_agent() -> Agent:
 
 # Global shopping agent instance
 shopping_agent = _create_shopping_agent()
+
+app = App(root_agent=shopping_agent, name="shopping")

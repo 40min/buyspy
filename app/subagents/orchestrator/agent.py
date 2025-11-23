@@ -3,10 +3,11 @@ import os
 
 import google.auth
 from google.adk.agents import Agent
+from google.adk.apps.app import App
 from google.adk.tools import AgentTool
 
-from .research import research_agent
-from .shopping import shopping_agent
+from ..research.agent import research_agent
+from ..shopping.agent import shopping_agent
 
 
 def _initialize_google_auth() -> str:
@@ -48,7 +49,7 @@ def _create_root_agent() -> Agent:
 
 **STEP 2: EXECUTION**
 - **Scenario A: Recommendation ("Best headphones?")**
-  1. Call `research_agent` with: `"Research [User Query] for [Country Name]"`
+  1. Call `research_agent` with the following input: "Research [User Query] for [Country Name]"
   2. **Read Output:** Extract the **Model Name** AND the **Reason** provided by the researcher.
   3. **Loop:** For each model found:
      - Call `shopping_agent` with: `"Find price for [Model Name] in [Country Name]"`
@@ -75,3 +76,5 @@ Start.
 
 # Global root agent instance
 root_agent = _create_root_agent()
+
+app = App(root_agent=root_agent, name="orchestrator")
