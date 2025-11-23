@@ -1,6 +1,9 @@
 import json
 
 from ddgs import DDGS
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+from mcp import StdioServerParameters
 
 
 def find_shopping_links(product_name: str, region: str) -> str:
@@ -43,3 +46,19 @@ def find_shopping_links(product_name: str, region: str) -> str:
         return json.dumps(results)
     except Exception as e:
         return f"Error finding links: {e!s}"
+
+
+def _create_fetch_tool() -> McpToolset:
+    """Create the Fetch Tool using the native ADK integration."""
+    return McpToolset(
+        connection_params=StdioConnectionParams(
+            server_params=StdioServerParameters(
+                command="uvx", args=["mcp-server-fetch"], tool_filter=["fetch"]
+            ),
+            timeout=60,
+        )
+    )
+
+
+# Global fetch tool instance for use by agents
+fetch_tool = _create_fetch_tool()

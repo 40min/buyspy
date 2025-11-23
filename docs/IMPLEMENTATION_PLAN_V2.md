@@ -36,7 +36,7 @@ We will implement a **Hub-and-Spoke Architecture**. The **Orchestrator Agent** (
 buyspy/
 ‚îú‚îÄ‚îÄ app/
 ‚îÇ   ‚îú‚îÄ‚îÄ agent.py                  # Composition Root (Entry Point)
-‚îÇ   ‚îú‚îÄ‚îÄ agents/                   # [NEW] Agent Definitions
+‚îÇ   ‚îú‚îÄ‚îÄ subagents/                   # [NEW] Agent Definitions
 ‚îÇ   ‚îÇ   ‚îú‚îÄ‚îÄ orchestrator.py     # The "Brain"
 ‚îÇ   ‚îÇ   ‚îú‚îÄ‚îÄ specialists.py      # WebSearcher, LocalSearcher, Reviewer
 ‚îÇ   ‚îú‚îÄ‚îÄ memory/                   # [NEW] State Management

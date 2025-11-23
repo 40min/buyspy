@@ -6,11 +6,8 @@ from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.tools import AgentTool
 from google.adk.tools.google_search_tool import google_search
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
-from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-from mcp import StdioServerParameters
 
-from app.tools.link_finder import find_shopping_links
+from app.tools.search_tools import fetch_tool, find_shopping_links
 
 
 def _initialize_google_auth() -> str:
@@ -20,20 +17,6 @@ def _initialize_google_auth() -> str:
     os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
     os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
     return project_id
-
-
-def _get_fetch_tool() -> McpToolset:
-    # Create the Fetch Tool using the native ADK integration
-    return McpToolset(
-        connection_params=StdioConnectionParams(
-            server_params=StdioServerParameters(
-                command="uvx",
-                args=["mcp-server-fetch"],
-                tool_filter=["fetch"],
-            ),
-            timeout=60,
-        )
-    )
 
 
 # ==========================================
@@ -68,8 +51,6 @@ Return a list where every item looks like this:
 # ==========================================
 def _create_shopping_agent() -> Agent:
     """Takes a product name + region, finds link, fetches, verifies price."""
-    fetch_tool = _get_fetch_tool()
-
     return Agent(
         name="shopping_agent",
         model="gemini-2.5-flash-lite",
