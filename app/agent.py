@@ -52,7 +52,7 @@ Use ${current_year} as default for [Year] if it is not in input context or user 
 
 ### YOUR JOB
 1. **Search:** Look for "Best [Category] reviews [Country Name] [Year]".
-2. **Select:** Identify 1-3 top models popular in that country.
+2. **Select:** Identify 1-5 top models popular in that country.
 3. **Reasoning:** For each model, identify the *key reason* it is recommended (e.g., "Best Value", "Best Battery Life", "Top Tier Audio").
 
 ### OUTPUT FORMAT
@@ -161,6 +161,7 @@ def _create_root_agent() -> Agent:
 **STEP 3: COMPILE RESPONSE**
 - Take the outputs from the agents.
 - Present a clean summary to the user.
+- If some product is unavailable to buy in a region, list it separately below findings
 - **Format:**
     - **Product:** [Name]
     - **Why:** [From Research, if applicable]
