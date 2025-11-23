@@ -24,7 +24,8 @@ def _create_shopping_agent() -> Agent:
     *   - **UK** / **United Kingdom** -> `uk-en`
     *   - **Germany** -> `de-de`
     *   Follow the same pattern, default to `us-en` if unsure.
-2.  **SEARCH:** Call `find_shopping_links(product_name, region_code)`.
+2.  **SEARCH:** Call `find_shopping_links(search_query, region_code)`.
+    * Use "[Product Name] in [Country Name] price" as a search_query.
 3.  **FILTER:** Look at the results.
     *   **Priority 1 (Aggregators):** Hinta.fi, Idealo, PriceRunner, Geizhals, Kelkoo.
     *   **Priority 2 (Major Retailers):** Amazon, Verkkokauppa, BestBuy, etc.

@@ -20,7 +20,7 @@ playground:
 	@echo "|                                                                             |"
 	@echo "| 🔍 IMPORTANT: Select the 'app' folder to interact with your agent.          |"
 	@echo "==============================================================================="
-	uv run adk web . --port 8501 --reload_agents --log_level DEBUG
+	uv run adk web app/subagents --port 8501 --reload_agents --log_level DEBUG
 
 # Run the Telegram bot
 run-bot:
