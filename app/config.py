@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Telegram settings
     telegram_bot_token: str
 
+    # BrightData settings
+    brightdata_api_token: str
+
     # Optional settings
     artifacts_bucket_name: str | None = None
     log_level: str = "INFO"
@@ -36,7 +39,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_required_fields(self) -> "Settings":
         """Validate that required fields are not empty strings."""
-        required_fields = ["gcp_project_id", "telegram_bot_token"]
+        required_fields = [
+            "gcp_project_id",
+            "telegram_bot_token",
+            "brightdata_api_token",
+        ]
 
         for field_name in required_fields:
             value = getattr(self, field_name)
