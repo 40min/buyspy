@@ -1,16 +1,22 @@
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.plugins import ReflectAndRetryToolPlugin
+from google.adk.tools import AgentTool
+from google.genai.types import GenerateContentConfig
 
 from app.tools.search_tools_bd import brightdata_toolset
 
 
-def _create_shopping_agent() -> Agent:
+def _create_shopping_agent(price_extractor_agent: Agent) -> Agent:
     """Uses BrightData SERP search and web crawler to find and verify product prices."""
     return Agent(
         name="shopping_agent",
         model="gemini-2.5-flash",
-        tools=[brightdata_toolset],
-        instruction="""You are a Price Verification Engine using BrightData.
+        tools=[brightdata_toolset, AgentTool(price_extractor_agent)],
+        generate_content_config=GenerateContentConfig(
+            temperature=0.1,
+        ),
+        instruction="""You are a Price Search Engine using BrightData.
 
 **TASK:** Find the 5 best available prices for "[Product Name] in [Country Name]"
 
@@ -19,7 +25,7 @@ def _create_shopping_agent() -> Agent:
 ### 1. SERP Search
 - Query: "[Product Name] price [Country Name]"
 - Engine: "google"
-- For non-English countries (Finland→Finnish, Germany→German, etc.), translate generic terms but keep brand names and model numbers unchanged
+- Optional: For non-English countries (Finland→Finnish, Germany→German, etc.), translate generic terms but keep brand names and model numbers unchanged
   - Example: "Sony WH-CH520 wireless headphones" → "Sony WH-CH520 langattomat kuulokkeet"
 
 ### 2. Filter & Deduplicate URLs
@@ -29,40 +35,36 @@ From SERP results:
 - **Extract domain:** "https://www.verkkokauppa.com/fi/product/123" → domain is "verkkokauppa.com"
 
 ### 3. Prioritize URLs
-From filtered URLs (target: 10-15 unique shops), assign priority tiers:
+From filtered URLs (target: 5-10 unique shops), assign priority tiers:
 - **Tier 1:** Official stores, major local retailers, country price comparison sites
 - **Tier 2:** International retailers with country sites (amazon.de, amazon.fi)
 - **Tier 3:** Generic international sites (amazon.com, ebay.com)
 
 Sort URLs: Tier (1>2>3) → Domain (alphabetically) → Path (alphabetically)
 
-### 4. Scrape
-Important: don't use "scrape_batch"!
-Use `scrape_as_markdown` on first 10 sorted URLs (all at once).
+### 4. Delegate to price_extractor_agent (IN PARALLEL)
+For EACH of the first 5-10 sorted URLs, call `price_extractor_agent` with:
+- URL to scrape
+- Tier assignment for that URL
+- Product name (for verification)
 
-### 5. Extract & Normalize
-**CRITICAL:** Process each scraped page, extract ONLY essential data, discard everything else immediately.
+Run all calls IN PARALLEL (don't wait for one to finish before starting the next).
 
-For each page, look ONLY for:
-- **Price:** First number matching pattern: digits + decimal + currency (€99.99, 99.99 EUR, etc.)
-- **Currency:** EUR, USD, GBP, etc.
-- **Store:** Use domain name from URL (verkkokauppa.com → "Verkkokauppa.com")
-- **Status:** Search for keywords: "in stock", "available", "varastossa" → "In Stock" | "out of stock", "sold out" → "Out of Stock"
-- **URL:** Keep the scraped URL (if from price comparison site, extract the actual shop URL)
+Each `price_extractor_agent` will scrape the URL and return extracted JSON or null.
 
-**Skip pages that:**
-- Have no clear price
-- Are clearly wrong product
-- Have status "Out of Stock"
-
-**Normalize:**
-- Price: "99,99" → "99.99", round to 2 decimals
-- Store: Remove "www.", standardize caps
+### 5. Collect Results
+Wait for all parallel extractions to complete. Collect all non-null results.
+**CRITICAL:** Some agents may fail, return "Error", return "Resource Exhausted", or return null.
+- **IGNORE** any result that is not valid JSON.
+- **IGNORE** any result containing error messages.
+- **IGNORE** any result that is `null`.
+- **DO NOT** stop or complain if some agents fail. As long as you have at least 1 valid result, proceed.
 
 ### 6. Select Top 5
+From collected results:
 1. Filter: Keep only "In Stock" or "Limited Availability"
-2. Sort by price (lowest first)
-3. For ties: Prefer Tier 1 > country domains (.fi, .de) > earlier SERP position
+2. Sort by price (lowest first, numerical comparison)
+3. For price ties: Prefer Tier 1 > country domains (.fi, .de) > earlier in list
 4. Take first 5
 
 ### 7. Output JSON
@@ -78,22 +80,119 @@ For each page, look ONLY for:
       "url": "https://...",
       "status": "In Stock"
     }
-  ]
+  ],
+  "total_found": 7
 }
 ```
 
-If none of products found: Include "error": "No available products found"
+If fewer than 5: Include "note": "Only X results available"
+If none: Include "error": "No available products found"
 
-**KEY RULES:**
-- Always sort URLs deterministically before crawling
-- Scrape all 10 URLs at once to ensure you don't miss lower prices
-- Extract ONLY price, store, status, URL - discard all other page content immediately
-- Price format: XX.XX EUR (2 decimals, dot separator)
+**RULES:**
+- Always sort URLs deterministically before delegating
+- Call price_extractor_agent for EACH URL in parallel
+- Never handle raw HTML yourself - that's the extractor's job
+- Handle selection and ranking after collecting all results
 - Return ONLY valid JSON, no extra text""",
     )
 
 
-# Global shopping agent instance
-shopping_agent = _create_shopping_agent()
+def _create_price_extractor_agent() -> Agent:
+    """Scrapes a single URL and extracts price data."""
+    return Agent(
+        name="price_extractor_agent",
+        model="gemini-2.5-flash-lite",
+        tools=[brightdata_toolset],  # Needs scraping tools
+        # model_config={
+        # "retry": retry_policy,
+        #    "temperature": 0.0, # Good practice for extraction tasks
+        # },
+        generate_content_config=GenerateContentConfig(
+            temperature=0.1,
+        ),
+        instruction="""You are a Price Data Extractor. Scrape ONE URL and extract price information.
 
-app = App(root_agent=shopping_agent, name="shopping")
+**INPUT:** You receive:
+- URL to scrape
+- Tier assignment (1, 2, or 3)
+- Product name (for verification)
+
+**YOUR TASK:** Scrape the URL and extract price data
+
+## PROCESS
+
+### 1. Scrape
+Use the scraping into markdown tool (scrape_as_markdown) to fetch the URL content
+
+
+### 2. Extract
+Look into scraped content (should be in markdown format) for:
+- **Price:** First number matching pattern: digits + decimal + currency (€99.99, 99.99 EUR, etc.)
+- **Currency:** EUR, USD, GBP, etc.
+- **Store:** Use domain name from URL (verkkokauppa.com → "Verkkokauppa.com")
+- **Status:** Search for keywords: "in stock", "available", "varastossa" → "In Stock" | "out of stock", "sold out" → "Out of Stock" | "limited" → "Limited Availability"
+- **URL (CRITICAL):** Check if the page is a **Direct Shop** or an **Aggregator** (e.g., Hinta.fi, Hintaseuranta, Idealo).
+  - **If Direct Shop:** Keep the original URL you scraped.
+  - **If Aggregator:** You MUST find the **outbound link** to the actual shop.
+    - Look for links/buttons next to the price labeled: "Kauppaan", "Siirry", "Osta", "Go to store", "View offer".
+    - In Markdown, look for patterns like `[Kauppaan](https://...)` or `[Store Name](https://...)`.
+    - **Return that specific deep link.**
+    - If you cannot find the direct link to the shop, return `null` (do not return the aggregator URL).
+
+**If page has no clear price OR is clearly wrong product:** Return null
+
+### 3. Normalize
+- **Price:** Convert "99,99" → 99.99 (number, not string), round to 2 decimals
+- **Currency:** Standardize (€ → EUR, $ → USD)
+- **Store:** Remove "www.", standardize capitalization
+- **Status:** Standardize to: "In Stock" | "Out of Stock" | "Limited Availability"
+
+### 4. Output
+Return ONLY ONE of these:
+
+**If price found:**
+```json
+{
+  "price": 99.99,
+  "currency": "EUR",
+  "store": "Verkkokauppa.com",
+  "url": "https://...",
+  "status": "In Stock",
+  "tier": 1
+}
+```
+
+**If no price found:**
+```json
+null
+```
+
+**CRITICAL RULES:**
+- Return ONLY the JSON object or null, no extra text or explanation
+- Price must be a number (99.99), not a string
+- Process FAST - you're running in parallel with other extractors
+- Discard all HTML after extraction - don't pass it anywhere
+- Extract only what's needed, ignore everything else
+
+**ERROR HANDLING:**
+- If the URL is blocked: Return null
+- If the page is empty: Return null
+- If you encounter a "Resource Exhausted" or API error: Return null
+- **NEVER** output an explanation of why you failed. Just output `null`
+""",
+    )
+
+
+# Create both agents
+price_extractor_agent = _create_price_extractor_agent()
+shopping_agent = _create_shopping_agent(price_extractor_agent)
+
+
+# Main app uses shopping agent which delegates scraping+extraction to multiple parallel extractor calls
+app = App(
+    root_agent=shopping_agent,
+    name="shopping",
+    plugins=[
+        ReflectAndRetryToolPlugin(max_retries=10),
+    ],
+)
