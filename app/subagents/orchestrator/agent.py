@@ -4,10 +4,12 @@ import os
 import google.auth
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools import AgentTool
+from google.genai.types import GenerateContentConfig
 
-from ..research.agent import research_agent
-from ..shopping.agent import shopping_agent
+from app.subagents.research.agent import research_agent
+from app.subagents.shopping.agent import shopping_agent
 
 
 def _initialize_google_auth() -> str:
@@ -27,9 +29,12 @@ def _create_root_agent() -> Agent:
 
     return Agent(
         name="root_agent",
-        model="gemini-2.5-flash-lite",
+        model="gemini-2.5-flash",
         # Root only has access to the sub-agents
         tools=[AgentTool(research_agent), AgentTool(shopping_agent)],
+        generate_content_config=GenerateContentConfig(
+            temperature=0.1,
+        ),
         instruction=f"""You are BuySpy, an intelligent shopping assistant.
 
 ### CONTEXT
@@ -52,12 +57,12 @@ def _create_root_agent() -> Agent:
   1. Call `research_agent` with the following input: "Research [User Query] for [Country Name]"
   2. **Read Output:** Extract the **Model Name** AND the **Reason** provided by the researcher.
   3. **Loop:** For each model found:
-     - Call `shopping_agent` with: `"Find price for [Model Name] in [Country Name]"`
+     - Call `shopping_agent` with: `"[Model Name] price in [Country Name]"`
   4. **Combine:** Merge the "Reason" (from Research) with the "Price/Link" (from Shopping).
 
 - **Scenario B: User asks for specific product**
   1. Call `shopping_agent`.
-  2. **Input:** `"Find price for [Product Name] in [Country Name]"`
+  2. **Input:** `"[Product Name] price in [Country Name]"`
 
 **STEP 3: COMPILE RESPONSE**
 - Take the outputs from the agents.
@@ -77,4 +82,10 @@ Start.
 # Global root agent instance
 root_agent = _create_root_agent()
 
-app = App(root_agent=root_agent, name="orchestrator")
+app = App(
+    root_agent=root_agent,
+    name="orchestrator",
+    plugins=[
+        ReflectAndRetryToolPlugin(max_retries=10),
+    ],
+)

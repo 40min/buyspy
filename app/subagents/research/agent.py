@@ -1,6 +1,8 @@
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools.google_search_tool import google_search
+from google.genai.types import GenerateContentConfig
 
 
 def _create_research_agent(current_year: str) -> Agent:
@@ -8,6 +10,9 @@ def _create_research_agent(current_year: str) -> Agent:
         name="research_agent",
         model="gemini-2.5-flash-lite",
         tools=[google_search],
+        generate_content_config=GenerateContentConfig(
+            temperature=0.1,
+        ),
         instruction=f"""You are a Regional Product Research Specialist.
 
 **Input Context:** "Research [Category] for [Country Name]"
@@ -30,4 +35,10 @@ Return a list where every item looks like this:
 # Global research agent instance
 research_agent = _create_research_agent(current_year="2025")
 
-app = App(root_agent=research_agent, name="research")
+app = App(
+    root_agent=research_agent,
+    name="research",
+    plugins=[
+        ReflectAndRetryToolPlugin(max_retries=10),
+    ],
+)
