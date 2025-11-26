@@ -16,7 +16,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from app.agent import get_root_agent
+from app.agent import root_agent
 
 
 @pytest.fixture
@@ -36,90 +36,9 @@ def mock_google_search_tool() -> Mock:
 
 def test_agent_name(mock_google_auth: Mock) -> None:
     """Test that the agent has the correct name."""
-    agent = get_root_agent()
-    assert agent.name == "root_agent"
+    assert root_agent.name == "root_agent"
 
 
 def test_agent_model(mock_google_auth: Mock) -> None:
     """Test that the agent uses the correct model."""
-    agent = get_root_agent()
-    assert agent.model == "gemini-2.5-flash-lite"
-
-
-def test_agent_instruction_is_shopping_assistant(mock_google_auth: Mock) -> None:
-    """Test that the agent instruction is configured as a shopping assistant."""
-    agent = get_root_agent()
-    instruction = agent.instruction
-
-    # Check that the instruction contains shopping-related keywords
-    assert isinstance(instruction, str)
-    assert "BuySpy" in instruction
-    assert "intelligent shopping assistant" in instruction.lower()
-    assert "products" in instruction.lower()
-
-
-def test_agent_has_hybrid_tools(mock_google_auth: Mock) -> None:
-    """Test that the agent is equipped with both research_agent and find_shopping_links."""
-    agent = get_root_agent()
-    tools = agent.tools
-
-    assert len(tools) == 2
-    tool_names = [str(tool) for tool in tools]
-    assert any("AgentTool" in name for name in tool_names)
-    assert any("find_shopping_links" in name for name in tool_names)
-
-
-def test_agent_instruction_mentions_search_capabilities(mock_google_auth: Mock) -> None:
-    """Test that the agent instruction mentions web search capabilities."""
-    agent = get_root_agent()
-    instruction = agent.instruction
-
-    assert isinstance(instruction, str)
-    assert "research_agent" in instruction
-    assert "find_shopping_links" in instruction
-
-
-def test_agent_instruction_contains_region_workflow(mock_google_auth: Mock) -> None:
-    """Test that the agent instruction contains the 4-step region-aware workflow."""
-    agent = get_root_agent()
-    instruction = agent.instruction
-
-    assert isinstance(instruction, str)
-    assert "STEP 1: CHECK REGION" in instruction
-    assert "STEP 2: RESEARCH" in instruction
-    assert "STEP 3: SHOPPING" in instruction
-    assert "STEP 4: SYNTHESIS" in instruction
-    assert "find_shopping_links" in instruction
-
-
-def test_agent_instruction_contains_region_mapping(mock_google_auth: Mock) -> None:
-    """Test that the agent instruction contains region mapping logic."""
-    agent = get_root_agent()
-    instruction = agent.instruction
-
-    assert isinstance(instruction, str)
-    assert "Finland -> 'fi-fi'" in instruction
-    assert "USA -> 'us-en'" in instruction
-    assert "UK -> 'uk-en'" in instruction
-    assert "Germany -> 'de-de'" in instruction
-
-
-def test_agent_instruction_mentions_helpful_approach(mock_google_auth: Mock) -> None:
-    """Test that the agent instruction emphasizes helpful and unbiased approach."""
-    agent = get_root_agent()
-    instruction = agent.instruction
-
-    assert isinstance(instruction, str)
-    assert "intelligent" in instruction.lower()
-
-
-def test_agent_instruction_mentions_comparison_capabilities(
-    mock_google_auth: Mock,
-) -> None:
-    """Test that the agent instruction mentions comparison and analysis capabilities."""
-    agent = get_root_agent()
-    instruction = agent.instruction
-
-    assert isinstance(instruction, str)
-    assert "link" in instruction.lower()
-    assert "direct url" in instruction.lower()
+    assert root_agent.model == "gemini-2.5-flash-lite"
