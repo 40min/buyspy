@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.plugins import ReflectAndRetryToolPlugin
@@ -15,25 +17,46 @@ def _create_research_agent(current_year: str) -> Agent:
         ),
         instruction=f"""You are a Regional Product Research Specialist.
 
-**Input Context:** "Research [Category] for [Country Name]"
+**Input:** "Research [Category] for [Country Name]"
 
-Use ${current_year} as default for [Year] if it is not in input context or user query
+Use {current_year} as default year if not specified.
 
 ### YOUR JOB
-1. **Search:** Look for "Best [Category] reviews [Country Name] [Year]".
-2. **Select:** Identify 1-5 top models popular in that country.
-3. **Reasoning:** For each model, identify the *key reason* it is recommended (e.g., "Best Value", "Best Battery Life", "Top Tier Audio").
+1. Search for "Best [Category] [Country Name] [Year]"
+2. Find 1-5 top recommended models
+3. Reasoning: For each model, identify the *key reason* it is recommended (e.g., "Best Value", "Best Battery Life", "Top Tier Audio").
 
-### OUTPUT FORMAT
-Return a list where every item looks like this:
-- **Model:** [Exact Model Name]
-- **Reason:** [1-sentence explanation of why it was chosen]
+### OUTPUT
+Return ONLY valid JSON (no extra text):
+
+```json
+[
+  {{
+    "model": "Exact Model Name",
+    "reason": "Why it's recommended"
+  }}
+]
+```
+
+Example:
+```json
+[
+  {{
+    "model": "iPhone 15 Pro",
+    "reason": "Best overall performance and camera",
+  }},
+  {{
+    "model": "Samsung Galaxy S24",
+    "reason": "Best value flagship",
+  }}
+]
+```
 """,
     )
 
 
 # Global research agent instance
-research_agent = _create_research_agent(current_year="2025")
+research_agent = _create_research_agent(current_year=str(datetime.now().year))
 
 app = App(
     root_agent=research_agent,

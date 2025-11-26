@@ -26,7 +26,7 @@ def _create_shopping_agent(price_extractor_agent: Agent) -> Agent:
 ### 1. SERP Search
 - Query: "[Product Name] price [Country Name]"
 - Engine: "google"
-- Optional: For non-English countries (Finland→Finnish, Germany→German, etc.), translate generic terms but keep brand names and model numbers unchanged
+- For non-English countries (Finland→Finnish, Germany→German, etc.), translate generic terms but keep brand names and model numbers unchanged
   - Example: "Sony WH-CH520 wireless headphones" → "Sony WH-CH520 langattomat kuulokkeet"
 
 ### 2. Filter & Deduplicate URLs
@@ -36,7 +36,7 @@ From SERP results:
 - **Extract domain:** "https://www.verkkokauppa.com/fi/product/123" → domain is "verkkokauppa.com"
 
 ### 3. Prioritize URLs
-From filtered URLs (target: 5-10 unique shops), assign priority tiers:
+From filtered URLs (target: 3-7 unique shops), assign priority tiers:
 - **Tier 1:** Official stores, major local retailers, country price comparison sites
 - **Tier 2:** International retailers with country sites (amazon.de, amazon.fi)
 - **Tier 3:** Generic international sites (amazon.com, ebay.com)
@@ -44,7 +44,7 @@ From filtered URLs (target: 5-10 unique shops), assign priority tiers:
 Sort URLs: Tier (1>2>3) → Domain (alphabetically) → Path (alphabetically)
 
 ### 4. Delegate to price_extractor_agent (IN PARALLEL)
-For EACH of the first 5-10 sorted URLs, call `price_extractor_agent` with:
+For EACH of the first 3-7 sorted URLs, call `price_extractor_agent` with:
 - URL to scrape
 - Tier assignment for that URL
 - Product name (for verification)
