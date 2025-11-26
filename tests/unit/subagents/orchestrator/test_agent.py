@@ -16,22 +16,15 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from app.agent import root_agent
+from app.subagents.orchestrator.agent import root_agent
 
 
 @pytest.fixture
 def mock_google_auth() -> Mock:
     """Mock Google authentication for tests."""
-    with patch("app.agent.google.auth.default") as mock_auth:
+    with patch("google.auth.default") as mock_auth:
         mock_auth.return_value = (None, "test-project")
         yield mock_auth
-
-
-@pytest.fixture
-def mock_google_search_tool() -> Mock:
-    """Mock Google Search tool to avoid actual API calls."""
-    with patch("app.agent.GoogleSearchTool") as mock_tool:
-        yield mock_tool
 
 
 def test_agent_name(mock_google_auth: Mock) -> None:
@@ -41,4 +34,4 @@ def test_agent_name(mock_google_auth: Mock) -> None:
 
 def test_agent_model(mock_google_auth: Mock) -> None:
     """Test that the agent uses the correct model."""
-    assert root_agent.model == "gemini-2.5-flash-lite"
+    assert root_agent.model == "gemini-2.5-flash"
