@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     # BrightData settings
     brightdata_api_token: str
+    brightdata_api_timeout: int = 60
 
     # Optional settings
     artifacts_bucket_name: str | None = None

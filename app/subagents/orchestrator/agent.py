@@ -22,8 +22,10 @@ def _initialize_google_auth() -> str:
 
 
 def _create_root_agent() -> Agent:
-    _initialize_google_auth()
     """Create the root agent that coordinates the subagents."""
+
+    _initialize_google_auth()
+
     current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
     current_year = datetime.datetime.now().strftime("%Y")
 

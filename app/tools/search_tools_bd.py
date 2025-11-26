@@ -35,7 +35,7 @@ def _create_brightdata_toolset() -> McpToolset:
                     "API_TOKEN": settings.brightdata_api_token,
                 },
             ),
-            timeout=60,
+            timeout=settings.brightdata_api_timeout,
         )
     )
 
