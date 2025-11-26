@@ -25,7 +25,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai.agent_engines.templates.adk import AdkApp
 
-from app.agent import get_app
+from app.agent import app
 from app.app_utils.tracing import CloudTraceLoggingSpanExporter
 from app.app_utils.typing import Feedback
 
@@ -67,7 +67,7 @@ def _create_agent_engine() -> AgentEngineApp:
     vertexai.init(project=project_id, location="europe-north1")
     artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
     return AgentEngineApp(
-        app=get_app(),
+        app=app,
         artifact_service_builder=lambda: GcsArtifactService(
             bucket_name=artifacts_bucket_name
         )
