@@ -77,7 +77,7 @@ null
 **CRITICAL RULES:**
 - Return ONLY the JSON object or null, no extra text or explanation
 - Price must be a number (99.99), not a string
-- Process FAST - you're running in parallel with other extractors
+- Process FAST - you're operating in parallel with other extractors
 - Discard all HTML after extraction - don't pass it anywhere
 - Extract only what's needed, ignore everything else
 

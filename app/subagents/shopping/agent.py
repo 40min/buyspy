@@ -14,7 +14,6 @@ def _create_shopping_agent(price_extractor_agent: Agent) -> Agent:
     """Uses BrightData SERP search and web crawler to find and verify product prices."""
     return Agent(
         name="shopping_agent",
-        # model="gemini-2.5-flash-lite",
         model=Gemini(model="gemini-2.5-flash", retry_options=default_retry_config),
         tools=[brightdata_toolset, AgentTool(price_extractor_agent)],
         generate_content_config=GenerateContentConfig(
@@ -47,13 +46,13 @@ From filtered URLs (target: 3-7 unique shops), assign priority tiers:
 
 Sort URLs: Tier (1>2>3) → Domain (alphabetically) → Path (alphabetically)
 
-### 4. Delegate to price_extractor tool (IN PARALLEL)
-For EACH of the first 3-7 sorted URLs, call `price_extractor` with:
+### 4. Delegate to price_extractor_agent tool (IN PARALLEL)
+For EACH of the first 3-7 sorted URLs, call `price_extractor_agent` with:
 - URL to scrape
 - Tier assignment for that URL
 - Product name (for verification)
 
-Run all calls IN PARALLEL (don't wait for one to finish before starting the next).
+Execute all price_extractor calls in parallel (don't wait for one to finish before starting the next).
 
 Each `price_extractor_agent` will scrape the URL and return extracted JSON or null.
 
@@ -95,7 +94,7 @@ If none: Include "error": "No available products found"
 
 **RULES:**
 - Always sort URLs deterministically before delegating
-- Call price_extractor_agent for EACH URL in parallel
+- Call `price_extractor_agent` for EACH URL in parallel
 - Never handle raw HTML yourself - that's the extractor's job
 - Handle selection and ranking after collecting all results
 - Return ONLY valid JSON, no extra text""",
