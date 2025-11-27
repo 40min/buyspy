@@ -1,8 +1,10 @@
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.models.google_llm import Gemini
 from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.genai.types import GenerateContentConfig
 
+from app.subagents.config import default_retry_config
 from app.tools.search_tools_bd import brightdata_toolset
 
 
@@ -10,7 +12,7 @@ def _create_price_extractor_agent() -> Agent:
     """Scrapes a single URL and extracts price data."""
     return Agent(
         name="price_extractor_agent",
-        model="gemini-2.5-flash-lite",
+        model=Gemini(model="gemini-2.5-flash-lite", retry_options=default_retry_config),
         tools=[brightdata_toolset],  # Needs scraping tools
         generate_content_config=GenerateContentConfig(
             temperature=0.1,

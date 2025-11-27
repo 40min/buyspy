@@ -1,4 +1,7 @@
+import asyncio
 import logging
+from typing import Any
+from venv import logger
 
 from google.adk.events.event import Event
 from telegram import Update
@@ -16,12 +19,22 @@ from app.agent_engine_app import AgentEngineApp
 class TelegramService:
     """Service for handling Telegram bot message routing to the agent engine."""
 
-    def __init__(self, bot_token: str, agent_engine: AgentEngineApp):
-        """Initialize the Telegram service with bot token and agent engine instance."""
+    def __init__(
+        self, bot_token: str, agent_engine: AgentEngineApp, timeout_seconds: int = 600
+    ):
+        """Initialize the Telegram service with bot token and agent engine instance.
+
+        Args:
+            bot_token: Telegram bot token
+            agent_engine: Agent engine instance
+            timeout_seconds: Timeout for agent processing in seconds (default: 600 = 10 minutes)
+        """
         self.agent_engine = agent_engine
         self.bot_token = bot_token
+        self.timeout_seconds = timeout_seconds
         self.logger = logging.getLogger(__name__)
         self.application: Application | None = None
+        self._sessions: dict[str, str] = {}
 
     async def handle_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -52,30 +65,51 @@ class TelegramService:
             # Send "typing" action to show the bot is processing
             await context.bot.send_chat_action(chat_id=chat_id, action="typing")
 
-            # Initialize response text
+            session_id = await self._get_or_create_adk_session_id(
+                telegram_user_id=str(update.effective_user.id),
+                telegram_chat_id=str(chat_id),
+            )
+
+            logging.info(f"Using session ID: {session_id}")
+
+            # Pass the message to the agent engine and process streaming response with timeout
+            processing_task = None
             response_text = ""
-            event_count = 0
 
-            # Pass the message to the agent engine and process streaming response
-            async for event in self.agent_engine.async_stream_query(
-                message=user_message, user_id=str(update.effective_user.id)
-            ):
-                try:
-                    # Validate the event
-                    validated_event = Event.model_validate(event)
-                    content = validated_event.content
-
-                    # Extract text content from the event
-                    if content and content.parts:
-                        for part in content.parts:
-                            if hasattr(part, "text") and part.text:
-                                response_text += part.text
-                                event_count += 1
-                except Exception as event_error:
-                    self.logger.warning(
-                        f"Error processing event {event}: {event_error}"
+            try:
+                # Start the agent processing as a task
+                processing_task = asyncio.create_task(
+                    self._process_agent_response(
+                        user_message,
+                        user_id=str(update.effective_user.id),
+                        session_id=str(chat_id),
+                        context=context,
+                        chat_id=str(chat_id),
                     )
-                    continue
+                )
+
+                # Wait for completion with timeout
+                response_text, event_count = await asyncio.wait_for(
+                    processing_task, timeout=self.timeout_seconds
+                )
+
+            except asyncio.TimeoutError:
+                # Cancel the processing task if it's still running
+                if processing_task and not processing_task.done():
+                    processing_task.cancel()
+
+                self.logger.warning(
+                    f"Agent processing timed out after {self.timeout_seconds} seconds for user {update.effective_user.id}"
+                )
+                response_text = (
+                    "I apologize, but my processing is taking longer than expected. "
+                    "Please try your request again, or simplify your question if possible."
+                )
+            except Exception as processing_error:
+                self.logger.error(
+                    f"Error during agent processing: {processing_error}", exc_info=True
+                )
+                response_text = "I encountered an error while processing your request. Please try again."
 
             # Handle case where no content was received
             if not response_text:
@@ -115,6 +149,89 @@ class TelegramService:
                 self.logger.error(
                     f"Failed to send error message to chat {chat_id_str}: {send_error}"
                 )
+
+    async def _get_or_create_adk_session_id(
+        self, telegram_user_id: str, telegram_chat_id: str
+    ) -> str:
+        """
+        Retrieves the existing ADK session ID for a chat, or creates a new one
+        and stores it if one doesn't exist yet.
+        """
+
+        # Check local storage first
+        if telegram_chat_id in self._sessions:
+            logger.warning(
+                f"Using existing session ID ({self._sessions[telegram_chat_id]}) for chat {telegram_chat_id}"
+            )
+            return self._sessions[telegram_chat_id]
+
+        try:
+            # The 'user_id' parameter is for long-term memory association (Memory Bank feature)
+            await self.agent_engine.async_create_session(
+                user_id=telegram_user_id, session_id=telegram_chat_id
+            )
+            logger.warning(
+                f"Created new session ID ({telegram_chat_id}) for chat {telegram_chat_id}"
+            )
+            self._sessions[telegram_chat_id] = telegram_chat_id
+        except Exception:
+            logger.warning(f"Session in ADKalready exists for chat {telegram_chat_id}")
+            self._sessions[telegram_chat_id] = telegram_chat_id
+
+        # todo: store self._sessions as a set
+
+        return telegram_chat_id
+
+    async def _process_agent_response(
+        self,
+        user_message: str,
+        user_id: str,
+        session_id: str,
+        context: Any,
+        chat_id: str,
+    ) -> tuple[str, int]:
+        """Process agent response and return the accumulated text and event count.
+
+        Args:
+            user_message: The user message to process
+            user_id: User identifier
+            session_id: Session identifier
+
+        Returns:
+            Tuple of (response_text, event_count)
+        """
+        response_text = ""
+        event_count = 0
+
+        # Process streaming response from agent
+        async for event in self.agent_engine.async_stream_query(
+            message=user_message,
+            user_id=user_id,
+            session_id=session_id,
+        ):
+            try:
+                # Validate the event
+                validated_event = Event.model_validate(event)
+
+                if validated_event.get_function_calls():
+                    for call in validated_event.get_function_calls():
+                        # Immediately send a status update to the user
+                        await context.bot.send_message(
+                            chat_id=chat_id,
+                            text=f"⚙️ The agent is using a tool: `{call.name}`...",
+                        )
+                elif validated_event.content and validated_event.content.parts:
+                    # This is the final LLM response text
+                    for part in validated_event.content.parts:
+                        if hasattr(part, "text") and part.text:
+                            response_text += part.text
+                            event_count += 1
+
+            except Exception as event_error:
+                self.logger.warning(f"Error processing event {event}: {event_error}")
+                continue
+
+        return response_text, event_count
 
     async def start_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE

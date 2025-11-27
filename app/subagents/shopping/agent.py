@@ -1,9 +1,11 @@
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.models.google_llm import Gemini
 from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools import AgentTool
 from google.genai.types import GenerateContentConfig
 
+from app.subagents.config import default_retry_config
 from app.subagents.price_extractor.agent import price_extractor_agent
 from app.tools.search_tools_bd import brightdata_toolset
 
@@ -12,7 +14,8 @@ def _create_shopping_agent(price_extractor_agent: Agent) -> Agent:
     """Uses BrightData SERP search and web crawler to find and verify product prices."""
     return Agent(
         name="shopping_agent",
-        model="gemini-2.5-flash",
+        # model="gemini-2.5-flash-lite",
+        model=Gemini(model="gemini-2.5-flash", retry_options=default_retry_config),
         tools=[brightdata_toolset, AgentTool(price_extractor_agent)],
         generate_content_config=GenerateContentConfig(
             temperature=0.1,
@@ -20,6 +23,7 @@ def _create_shopping_agent(price_extractor_agent: Agent) -> Agent:
         instruction="""You are a Price Search Engine using BrightData.
 
 **TASK:** Find the 5 best available prices for "[Product Name] in [Country Name]"
+**Input:** [Product Name] price in [Country Name]
 
 ## WORKFLOW
 
@@ -43,8 +47,8 @@ From filtered URLs (target: 3-7 unique shops), assign priority tiers:
 
 Sort URLs: Tier (1>2>3) → Domain (alphabetically) → Path (alphabetically)
 
-### 4. Delegate to price_extractor_agent (IN PARALLEL)
-For EACH of the first 3-7 sorted URLs, call `price_extractor_agent` with:
+### 4. Delegate to price_extractor tool (IN PARALLEL)
+For EACH of the first 3-7 sorted URLs, call `price_extractor` with:
 - URL to scrape
 - Tier assignment for that URL
 - Product name (for verification)

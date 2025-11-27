@@ -2,15 +2,18 @@ from datetime import datetime
 
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.models.google_llm import Gemini
 from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools.google_search_tool import google_search
 from google.genai.types import GenerateContentConfig
+
+from app.subagents.config import default_retry_config
 
 
 def _create_research_agent(current_year: str) -> Agent:
     return Agent(
         name="research_agent",
-        model="gemini-2.5-flash-lite",
+        model=Gemini(model="gemini-2.5-flash-lite", retry_options=default_retry_config),
         tools=[google_search],
         generate_content_config=GenerateContentConfig(
             temperature=0.1,

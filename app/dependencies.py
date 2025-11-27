@@ -57,4 +57,8 @@ def get_telegram_service() -> TelegramService:
     config = get_config()
     engine = get_agent_engine()
 
-    return TelegramService(bot_token=config.telegram_bot_token, agent_engine=engine)
+    return TelegramService(
+        bot_token=config.telegram_bot_token,
+        agent_engine=engine,
+        timeout_seconds=600,  # 10 minutes timeout for agent processing
+    )

@@ -4,10 +4,12 @@ import os
 import google.auth
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.models.google_llm import Gemini
 from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools import AgentTool
 from google.genai.types import GenerateContentConfig
 
+from app.subagents.config import default_retry_config
 from app.subagents.research.agent import research_agent
 from app.subagents.shopping.agent import shopping_agent
 
@@ -31,7 +33,7 @@ def _create_root_agent() -> Agent:
 
     return Agent(
         name="root_agent",
-        model="gemini-2.5-flash",
+        model=Gemini(model="gemini-2.5-flash", retry_options=default_retry_config),
         # Root only has access to the sub-agents
         tools=[AgentTool(research_agent), AgentTool(shopping_agent)],
         generate_content_config=GenerateContentConfig(
@@ -96,7 +98,7 @@ def _create_root_agent() -> Agent:
 
 - **Scenario B: Specific Product Request**
   1. Call `shopping_agent` directly.
-  2. **Input:** `"[Product Name] price in [Country Name]"`
+  2. **Input:** `[Product Name] price in [Country Name]`
   3. **Parse JSON Output:** Extract "product", "country", "results", and "total_found".
   4. **Present Results:** Show prices and availability.
 
