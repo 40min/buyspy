@@ -32,7 +32,7 @@ def _create_price_extractor_agent() -> Agent:
 Use the scraping into markdown tool (scrape_as_markdown) to fetch the URL content
 
 
-### 2. Extract
+### 2. Extract (YOUR LOGIC - NO TOOLS)
 Look into scraped content (should be in markdown format) for:
 - **Price:** First number matching pattern: digits + decimal + currency (€99.99, 99.99 EUR, etc.)
 - **Currency:** EUR, USD, GBP, etc.
@@ -82,11 +82,13 @@ null
 - Extract only what's needed, ignore everything else
 - Use only tool "scrape_as_markdown" from brightdata_toolset
 - **NEVER** call "run_price_extraction" or "extract_price_data" or "run_code"
+- Try to work fast, set time limit for your work 60s
 
 **ERROR HANDLING:**
 - If the URL is blocked: Return null
 - If the page is empty: Return null
 - If you encounter a "Resource Exhausted" or API error: Return null
+- If you can't finish work in time (60s) return null
 - **NEVER** output an explanation of why you failed. Just output `null`
 """,
     )

@@ -94,7 +94,6 @@ price_extractor_agent(
 ```
 
 Execute all `price_extractor_agent` calls in parallel (don't wait for one to finish before starting the next).
-
 Each call will return extracted JSON or null.
 
 ### 5. Collect Results

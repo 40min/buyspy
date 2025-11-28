@@ -6,7 +6,7 @@ from google.adk.agents import Agent
 from google.adk.apps.app import App, EventsCompactionConfig
 from google.adk.models.google_llm import Gemini
 from google.adk.plugins import ReflectAndRetryToolPlugin
-from google.adk.tools import AgentTool, preload_memory
+from google.adk.tools import AgentTool, load_memory
 from google.genai.types import GenerateContentConfig
 
 from app.subagents.config import default_retry_config
@@ -23,6 +23,13 @@ def _initialize_google_auth() -> str:
     return project_id
 
 
+async def _auto_save_to_memory(callback_context: App.CallbackContext) -> None:
+    """Automatically save session to memory after each agent turn."""
+    await callback_context._invocation_context.memory_service.add_session_to_memory(
+        callback_context._invocation_context.session
+    )
+
+
 def _create_root_agent() -> Agent:
     """Create the root agent that coordinates the subagents."""
 
@@ -35,7 +42,8 @@ def _create_root_agent() -> Agent:
         name="root_agent",
         model=Gemini(model="gemini-2.5-flash", retry_options=default_retry_config),
         # Root only has access to the sub-agents
-        tools=[AgentTool(research_agent), AgentTool(shopping_agent), preload_memory],
+        tools=[AgentTool(research_agent), AgentTool(shopping_agent), load_memory],
+        after_agent_callback=_auto_save_to_memory,
         generate_content_config=GenerateContentConfig(
             temperature=0.1,
         ),
