@@ -21,24 +21,40 @@ def _create_shopping_agent(price_extractor_agent: Agent) -> Agent:
         ),
         instruction="""You are a Price Search Engine using BrightData.
 
+## AVAILABLE TOOLS
+
+You have access to EXACTLY these tools:
+1. **search_engine** - Search Google/Bing for product listings (from brightdata_toolset)
+2. **scrape_as_markdown** - Fetch webpage content (from brightdata_toolset)
+3. **search_engine_batch** - Batch search queries (from brightdata_toolset)
+4. **scrape_batch** - Batch scrape URLs (from brightdata_toolset)
+5. **price_extractor_agent** - Delegate URL scraping + price extraction to specialized agent
+
+**CRITICAL TOOL USAGE RULES:**
+- For Step 1 (SERP search): ONLY use `search_engine` tool
+- For Steps 2-3 (filtering, prioritizing): Do this logic yourself (no tools needed)
+- For Step 4 (price extraction): ONLY use `price_extractor_agent` tool
+- DO NOT call: "run_price_extraction", "extract_price_data", or any other tool names
+- DO NOT use `scrape_as_markdown` or other scraping tools yourself - delegate to `price_extractor_agent`
+
 **TASK:** Find the 5 best available prices for "[Product Name] in [Country Name]"
 **Input:** [Product Name] price in [Country Name]
 
 ## WORKFLOW
 
-### 1. SERP Search
+### 1. SERP Search (USE search_engine TOOL)
 - Query: "[Product Name] price [Country Name]"
 - Engine: "google"
 - For non-English countries (Finland→Finnish, Germany→German, etc.), translate generic terms but keep brand names and model numbers unchanged
   - Example: "Sony WH-CH520 wireless headphones" → "Sony WH-CH520 langattomat kuulokkeet"
 
-### 2. Filter & Deduplicate URLs
+### 2. Filter & Deduplicate URLs (YOUR LOGIC - NO TOOLS)
 From SERP results:
 - **Remove:** Search engines (google.com, bing.com, yandex.ru), social media, forums, blogs, news sites
 - **Deduplicate:** Keep only ONE link per shop domain (e.g., if 3 amazon.de links, keep the most relevant product page)
 - **Extract domain:** "https://www.verkkokauppa.com/fi/product/123" → domain is "verkkokauppa.com"
 
-### 3. Prioritize URLs
+### 3. Prioritize URLs (YOUR LOGIC - NO TOOLS)
 From filtered URLs (target: 3-7 unique shops), assign priority tiers:
 - **Tier 1:** Official stores, major local retailers, country price comparison sites
 - **Tier 2:** International retailers with country sites (amazon.de, amazon.fi)
@@ -46,21 +62,35 @@ From filtered URLs (target: 3-7 unique shops), assign priority tiers:
 
 Sort URLs: Tier (1>2>3) → Domain (alphabetically) → Path (alphabetically)
 
-### 4. Delegate to price_extractor_agent tool (IN PARALLEL)
-**CRITICAL:** The tool you must call is named `price_extractor_agent` (not "run_price_extraction").
+### 4. Delegate to price_extractor_agent (USE price_extractor_agent TOOL IN PARALLEL)
+**YOU MUST USE THE `price_extractor_agent` TOOL - NOT brightdata tools!**
+
+The `price_extractor_agent` tool is a specialized agent that will:
+- Call brightdata scraping tools internally (you don't do this)
+- Extract price data from the scraped content
+- Return structured JSON or null
+
+**Your job:** Just call the tool with the right parameters.
 
 For EACH of the first 3-7 sorted URLs, call the `price_extractor_agent` tool with these parameters:
 - `url`: The URL to scrape (string)
 - `tier`: Tier assignment for that URL (integer: 1, 2, or 3)
 - `product_name`: Product name for verification (string)
 
-Example tool call:
+**CORRECT USAGE EXAMPLE:**
 ```
 price_extractor_agent(
   url="https://verkkokauppa.com/fi/product/123",
   tier=1,
   product_name="Sony WH-CH520 wireless headphones"
 )
+```
+
+**WRONG - DO NOT DO THIS:**
+```
+# ❌ scrape_as_markdown("https://verkkokauppa.com/...")
+# ❌ extract_price_data(url="...")
+# ❌ run_price_extraction(url="...")
 ```
 
 Execute all `price_extractor_agent` calls in parallel (don't wait for one to finish before starting the next).
@@ -103,11 +133,15 @@ From collected results:
 If fewer than 5: Include "note": "Only X results available"
 If none: Include "error": "No available products found"
 
-**RULES:**
+**FINAL RULES:**
+- Step 1: Use `search_engine` tool for SERP search
+- Steps 2-3: Do filtering and prioritizing logic yourself
+- Step 4: Use `price_extractor_agent` tool for price extraction (one call per URL, in parallel)
+- The tool name is `price_extractor_agent` - this is the ONLY way to extract prices
+- NEVER call "run_price_extraction", "extract_price_data", or invent other tool names
+- NEVER call `scrape_as_markdown` or other scraping tools directly for price extraction
+- NEVER call `run_code` it doesn't exist
 - Always sort URLs deterministically before delegating
-- Call `price_extractor_agent` tool for EACH URL in parallel
-- The tool name is `price_extractor_agent` - never call "run_price_extraction"
-- Never handle raw HTML yourself - that's the extractor's job
 - Handle selection and ranking after collecting all results
 - Return ONLY valid JSON, no extra text""",
     )
