@@ -313,6 +313,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "python-telegram-bot" },
+    { name = "telegramify-markdown" },
 ]
 
 [package.optional-dependencies]
@@ -350,6 +351,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "python-telegram-bot", specifier = ">=22.5" },
     { name = "ruff", marker = "extra == 'lint'", specifier = ">=0.4.6,<1.0.0" },
+    { name = "telegramify-markdown", specifier = ">=0.5.2" },
     { name = "types-pyyaml", marker = "extra == 'lint'", specifier = ">=6.0.12.20240917,<7.0.0" },
     { name = "types-requests", marker = "extra == 'lint'", specifier = ">=2.32.0.20240914,<3.0.0" },
 ]
@@ -2144,6 +2146,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mistletoe"
+version = "1.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/11/96/ea46a376a7c4cd56955ecdfff0ea68de43996a4e6d1aee4599729453bd11/mistletoe-1.4.0.tar.gz", hash = "sha256:1630f906e5e4bbe66fdeb4d29d277e2ea515d642bb18a9b49b136361a9818c9d", size = 107203, upload-time = "2024-07-14T10:17:35.212Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/0f/b5e545f0c7962be90366af3418989b12cf441d9da1e5d89d88f2f3e5cf8f/mistletoe-1.4.0-py3-none-any.whl", hash = "sha256:44a477803861de1237ba22e375c6b617690a31d2902b47279d1f8f7ed498a794", size = 51304, upload-time = "2024-07-14T10:17:33.243Z" },
+]
+
+[[package]]
 name = "mistune"
 version = "3.1.4"
 source = { registry = "https://pypi.org/simple" }
@@ -3836,6 +3847,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a7/a5/d6f429d43394057b67a6b5bbe6eae2f77a6bf7459d961fdb224bf206eee6/starlette-0.48.0.tar.gz", hash = "sha256:7e8cee469a8ab2352911528110ce9088fdc6a37d9876926e73da7ce4aa4c7a46", size = 2652949, upload-time = "2025-09-13T08:41:05.699Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/be/72/2db2f49247d0a18b4f1bb9a5a39a0162869acf235f3a96418363947b3d46/starlette-0.48.0-py3-none-any.whl", hash = "sha256:0764ca97b097582558ecb498132ed0c7d942f233f365b86ba37770e026510659", size = 73736, upload-time = "2025-09-13T08:41:03.869Z" },
+]
+
+[[package]]
+name = "telegramify-markdown"
+version = "0.5.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mistletoe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d1/db/9f9bc7f495b7420abea642efa7622f92b17139465e01187db72fc139f79f/telegramify_markdown-0.5.2.tar.gz", hash = "sha256:b0a7aa45b381ff01fc9ec1b19f8eb3f971cb51654238a7290876035325a05e28", size = 35741, upload-time = "2025-10-14T09:27:04.102Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/4b/682203e2065e76d1d19576cb21d65590e53509ab00ccead9f9905b409f4b/telegramify_markdown-0.5.2-py3-none-any.whl", hash = "sha256:9ac720dacf037fb6b0f4257354de3552b70d68ea0764bdaf96923f9f62d4a21a", size = 32062, upload-time = "2025-10-14T09:27:02.845Z" },
 ]
 
 [[package]]

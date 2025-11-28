@@ -128,10 +128,16 @@ class TelegramService:
                 f"Sending response ({len(response_text)} chars) to chat {chat_id}"
             )
 
+            self.logger.info(f"Raw output from agent text: {response_text}")
+
             # Convert raw URLs to Markdown links (if any exist)
             formatted_text = convert_urls_to_links(response_text)
+
+            self.logger.info(f"After converting URLs to links: {formatted_text}")
+
             # Escape markdown while preserving link syntax
             formatted_text = escape_markdown_v2(formatted_text)
+
             self.logger.info(f"Sending formatted text: {formatted_text}")
             await update.message.reply_markdown_v2(
                 formatted_text, disable_web_page_preview=False

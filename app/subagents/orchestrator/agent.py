@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import Any
 
 import google.auth
 from google.adk.agents import Agent
@@ -23,7 +24,7 @@ def _initialize_google_auth() -> str:
     return project_id
 
 
-async def _auto_save_to_memory(callback_context: App.CallbackContext) -> None:
+async def _auto_save_to_memory(callback_context: Any) -> None:
     """Automatically save session to memory after each agent turn."""
     await callback_context._invocation_context.memory_service.add_session_to_memory(
         callback_context._invocation_context.session

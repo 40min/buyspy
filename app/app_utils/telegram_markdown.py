@@ -3,164 +3,83 @@
 This module provides functions for properly escaping text according to Telegram's
 MarkdownV2 format, with special handling for markdown links to ensure correct
 escaping rules are applied to different parts of the markup.
+
+The telegramify_markdown library is used for proper Telegram MarkdownV2 escaping
+but we apply additional post-processing to fix period escaping in URLs.
 """
 
 import re
 from urllib.parse import urlparse
 
+import telegramify_markdown
+
 
 def escape_markdown_v2(text: str) -> str:
-    """Escape special characters for Telegram MarkdownV2 format while preserving existing links.
+    """Escape special characters for Telegram MarkdownV2 format using telegramify_markdown.
 
-    This function properly handles Telegram's MarkdownV2 escaping rules:
-    - Inside link text [text]: Only escape ] and \
-    - Inside link URL (url): Only escape ) and \
-    - Outside links: Escape all special characters: _*[]()~`>#+-=|{}.!
+    This function uses the telegramify_markdown library's standardize function to properly
+    escape text according to Telegram's MarkdownV2 format rules, then applies post-processing
+    to fix periods in URLs which should not be escaped.
+
+    This fixes the issue with period (.) escaping in URLs that was causing Telegram API errors
+    like "character '.' is reserved and must be escaped with the preceding '\'".
 
     Args:
         text: Text to escape
 
     Returns:
-        Text with MarkdownV2 special characters escaped, preserving link syntax
+        Text with MarkdownV2 special characters escaped, preserving correct link syntax
     """
     if not text:
         return text
 
-    # Parse the text into segments (link text, link URLs, regular text)
-    segments = _parse_markdown_segments(text)
+    # Use telegramify_markdown for proper escaping
+    escaped_text = telegramify_markdown.standardize(text)
 
-    # Apply appropriate escaping to each segment
-    escaped_segments = []
-    for segment_type, content in segments:
-        if segment_type == "link_text":
-            escaped_segments.append(_escape_link_text(content))
-        elif segment_type == "link_url":
-            escaped_segments.append(_escape_link_url(content))
-        else:  # regular text
-            escaped_segments.append(_escape_regular_text(content))
+    # Post-process to fix periods in URLs (they should not be escaped)
+    escaped_text = _fix_periods_in_urls(escaped_text)
 
-    # Reconstruct the text
+    return escaped_text
+
+
+def _fix_periods_in_urls(text: str) -> str:
+    """Fix escaped periods in URLs while preserving other escaping.
+
+    URLs should have periods (.) preserved, but other special characters
+    should remain escaped.
+
+    Args:
+        text: Text that may have escaped periods in URLs
+
+    Returns:
+        Text with periods in URLs unescaped
+    """
+    # Find all markdown links and fix periods in URLs
     result = ""
-
-    # Parse again to rebuild the text with correct escaping
     current_pos = 0
-    for match in re.finditer(r"\[([^\]]+)\]\(([^)]+)\)", text):
-        # Add any regular text before this link
-        if match.start() > current_pos:
-            regular_text = text[current_pos : match.start()]
-            result += _escape_regular_text(regular_text)
 
-        # Add the link with properly escaped parts
+    for match in re.finditer(r"\[([^\]]+)\]\(([^)]+)\)", text):
+        # Add any regular text before this link (with current escaping)
+        if match.start() > current_pos:
+            result += text[current_pos : match.start()]
+
+        # Add the link with fixed URL escaping
         link_text = match.group(1)
         link_url = match.group(2)
-        result += f"[{_escape_link_text(link_text)}]({_escape_link_url(link_url)})"
+
+        # Fix escaped periods in URL only
+        fixed_url = link_url.replace(r"\.", ".")
+
+        # Keep other escaping intact
+        result += f"[{link_text}]({fixed_url})"
 
         current_pos = match.end()
 
-    # Add any remaining regular text
+    # Add any remaining regular text (after the last link)
     if current_pos < len(text):
-        result += _escape_regular_text(text[current_pos:])
+        result += text[current_pos:]
 
     return result
-
-
-def _parse_markdown_segments(text: str) -> list[tuple[str, str]]:
-    """Parse text into segments: (type, content).
-
-    Args:
-        text: Text to parse
-
-    Returns:
-        List of tuples (segment_type, content) where segment_type is:
-        - 'link_text': Content inside [link text]
-        - 'link_url': Content inside (link url)
-        - 'regular': Regular text
-    """
-    segments = []
-
-    # Find all markdown links
-    for match in re.finditer(r"\[([^\[]*?)\]\(([^)]+)\)", text):
-        link_text = match.group(1)
-        link_url = match.group(2)
-
-        segments.append(("link_text", link_text))
-        segments.append(("link_url", link_url))
-
-    return segments
-
-
-def _escape_link_text(text: str) -> str:
-    r"""Escape special characters for link text in MarkdownV2.
-
-    In link text [text], only ] and \ need to be escaped.
-
-    Args:
-        text: Text to escape
-
-    Returns:
-        Escaped text suitable for link text
-    """
-    return text.replace("\\", "\\\\").replace("]", "\\]")
-
-
-def _escape_link_url(text: str) -> str:
-    r"""Escape special characters for link URL in MarkdownV2.
-
-    In link URL (url), only ) and \ need to be escaped.
-
-    Args:
-        text: URL to escape
-
-    Returns:
-        Escaped URL suitable for link URL
-    """
-    return (
-        text.replace("\\", "\\\\")
-        .replace(")", "\\)")
-        .replace("?", "\\?")
-        .replace("=", "\\=")
-        .replace("&", "\\&")
-    )
-
-
-def _escape_regular_text(text: str) -> str:
-    """Escape special characters for regular text in MarkdownV2.
-
-    In regular text, these characters need escaping:
-    _*[]()~`>#+-=|{}.!
-
-    Args:
-        text: Text to escape
-
-    Returns:
-        Escaped text suitable for regular markdown text
-    """
-    special_chars = [
-        "_",
-        "*",
-        "[",
-        "]",
-        "(",
-        ")",
-        "~",
-        "`",
-        ">",
-        "#",
-        "+",
-        "-",
-        "=",
-        "|",
-        "{",
-        "}",
-        ".",
-        "!",
-        "$",
-    ]
-
-    for char in special_chars:
-        text = text.replace(char, f"\\{char}")
-
-    return text
 
 
 def convert_urls_to_links(text: str) -> str:
