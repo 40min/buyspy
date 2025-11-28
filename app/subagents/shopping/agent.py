@@ -28,14 +28,16 @@ You have access to EXACTLY these tools:
 2. **scrape_as_markdown** - Fetch webpage content (from brightdata_toolset)
 3. **search_engine_batch** - Batch search queries (from brightdata_toolset)
 4. **scrape_batch** - Batch scrape URLs (from brightdata_toolset)
-5. **price_extractor_agent** - Delegate URL scraping + price extraction to specialized agent
+5. **price_extractor_agent** - Delegate ONE URL at a time to specialized agent
 
 **CRITICAL TOOL USAGE RULES:**
 - For Step 1 (SERP search): ONLY use `search_engine` tool
 - For Steps 2-3 (filtering, prioritizing): Do this logic yourself (no tools needed)
-- For Step 4 (price extraction): ONLY use `price_extractor_agent` tool
-- DO NOT call: "run_price_extraction", "extract_price_data", or any other tool names
-- DO NOT use `scrape_as_markdown` or other scraping tools yourself - delegate to `price_extractor_agent`
+- For Step 4 (price extraction): Call `price_extractor_agent` MULTIPLE TIMES IN PARALLEL
+  - **ONE CALL PER URL** - Do NOT batch URLs together
+  - **DO NOT** send `{"urls": [...]}` - that's wrong
+  - **DO** call the tool separately for each URL: `price_extractor_agent(url="...", tier=1, product_name="...")`
+- DO NOT use `scrape_as_markdown` yourself - delegate to `price_extractor_agent`
 
 **TASK:** Find the 5 best available prices for "[Product Name] in [Country Name]"
 **Input:** [Product Name] price in [Country Name]
@@ -62,31 +64,31 @@ From filtered URLs (target: 3-7 unique shops), assign priority tiers:
 
 Sort URLs: Tier (1>2>3) → Domain (alphabetically) → Path (alphabetically)
 
-### 4. Delegate to price_extractor_agent (USE price_extractor_agent TOOL IN PARALLEL)
-**YOU MUST USE THE `price_extractor_agent` TOOL - NOT brightdata tools!**
+### 4. Extract Prices in Parallel (CALL price_extractor_agent MULTIPLE TIMES)
 
-The `price_extractor_agent` tool is a specialized agent that will:
-- Call brightdata scraping tools internally (you don't do this)
-- Extract price data from the scraped content
-- Return structured JSON or null
+**CRITICAL: Call the tool ONCE PER URL, not once for all URLs!**
 
-**Your job:** Just call the tool with the right parameters.
+For EACH of the first 3-7 sorted URLs, make a SEPARATE tool call:
 
-For EACH of the first 3-7 sorted URLs, call the `price_extractor_agent` tool with these parameters:
-- `url`: The URL to scrape (string)
-- `tier`: Tier assignment for that URL (integer: 1, 2, or 3)
-- `product_name`: Product name for verification (string)
-
-**CORRECT USAGE EXAMPLE:**
+**CORRECT - One call per URL:**
 ```
-price_extractor_agent(
-  url="https://verkkokauppa.com/fi/product/123",
-  tier=1,
-  product_name="Sony WH-CH520 wireless headphones"
-)
+Call 1: price_extractor_agent(url="https://shop1.com/product", tier=1, product_name="Sony WH-CH520")
+Call 2: price_extractor_agent(url="https://shop2.fi/item", tier=1, product_name="Sony WH-CH520")
+Call 3: price_extractor_agent(url="https://shop3.com/page", tier=2, product_name="Sony WH-CH520")
+... (continue for each URL)
 ```
 
-Execute all `price_extractor_agent` calls in parallel (don't wait for one to finish before starting the next).
+**WRONG - Don't do this:**
+```
+price_extractor_agent(urls=[...], product_name="...")  ❌ NEVER BATCH URLS
+```
+
+**Parameters for each call:**
+- `url`: String - The single URL to scrape
+- `tier`: Integer (1, 2, or 3) - Priority tier for this URL
+- `product_name`: String - Product name for verification
+
+Execute all calls **IN PARALLEL** (don't wait for one to finish before starting the next).
 Each call will return extracted JSON or null.
 
 ### 5. Collect Results
@@ -128,9 +130,8 @@ If none: Include "error": "No available products found"
 **FINAL RULES:**
 - Step 1: Use `search_engine` tool for SERP search
 - Steps 2-3: Do filtering and prioritizing logic yourself
-- Step 4: Use `price_extractor_agent` tool for price extraction (one call per URL, in parallel)
-- The tool name is `price_extractor_agent` - this is the ONLY way to extract prices
-- NEVER call `scrape_as_markdown` or other scraping tools directly for price extraction
+- Step 4: Call `price_extractor_agent` tool MULTIPLE TIMES (one URL per call, all in parallel)
+- NEVER send multiple URLs to price_extractor_agent in one call
 - Always sort URLs deterministically before delegating
 - Handle selection and ranking after collecting all results
 - Return ONLY valid JSON, no extra text""",

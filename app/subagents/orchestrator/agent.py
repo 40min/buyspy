@@ -231,7 +231,7 @@ app = App(
         ReflectAndRetryToolPlugin(max_retries=10),
     ],
     events_compaction_config=EventsCompactionConfig(
-        compaction_interval=3,  # Trigger compaction every 3 invocations
+        compaction_interval=5,  # Trigger compaction every 3 invocations
         overlap_size=1,  # Keep 1 previous turn for context
     ),
 )
