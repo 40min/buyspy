@@ -34,4 +34,4 @@ def test_agent_name(mock_google_auth: Mock) -> None:
 
 def test_agent_model(mock_google_auth: Mock) -> None:
     """Test that the agent uses the correct model."""
-    assert root_agent.model == "gemini-2.5-flash"
+    assert root_agent.model.model == "gemini-2.5-flash"
