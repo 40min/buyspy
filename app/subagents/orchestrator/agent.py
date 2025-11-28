@@ -175,7 +175,7 @@ Analyze the user's query to determine intent:
 For each product with pricing data:
 - *Product:* [Model Name]
 - 💡 _Why:_ [Reason from research_agent, if applicable]
-- *Best Prices:* List top 3-5 results with:
+- *Found Prices:* List top 3-5 results with:
   - Price with *bold*
   - Store name as [Store Name](url)
   - Status with emojis: ✅ In Stock, ⚠️ Limited, ❌ Out of Stock

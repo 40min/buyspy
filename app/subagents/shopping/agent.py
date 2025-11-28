@@ -86,13 +86,6 @@ price_extractor_agent(
 )
 ```
 
-**WRONG - DO NOT DO THIS:**
-```
-# ❌ scrape_as_markdown("https://verkkokauppa.com/...")
-# ❌ extract_price_data(url="...")
-# ❌ run_price_extraction(url="...")
-```
-
 Execute all `price_extractor_agent` calls in parallel (don't wait for one to finish before starting the next).
 Each call will return extracted JSON or null.
 
@@ -137,9 +130,7 @@ If none: Include "error": "No available products found"
 - Steps 2-3: Do filtering and prioritizing logic yourself
 - Step 4: Use `price_extractor_agent` tool for price extraction (one call per URL, in parallel)
 - The tool name is `price_extractor_agent` - this is the ONLY way to extract prices
-- NEVER call "run_price_extraction", "extract_price_data", or invent other tool names
 - NEVER call `scrape_as_markdown` or other scraping tools directly for price extraction
-- NEVER call `run_code` it doesn't exist
 - Always sort URLs deterministically before delegating
 - Handle selection and ranking after collecting all results
 - Return ONLY valid JSON, no extra text""",
