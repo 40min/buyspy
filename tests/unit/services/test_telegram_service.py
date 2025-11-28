@@ -48,7 +48,7 @@ class TestTelegramService:
         # Mock the message
         update.message = Mock(spec=Message)
         update.message.text = "Test message"
-        update.message.reply_text = AsyncMock()
+        update.message.reply_markdown_v2 = AsyncMock()
 
         # Mock effective_chat
         update.effective_chat = Mock(spec=Chat)
@@ -114,7 +114,7 @@ class TestTelegramService:
 
         # Verify the agent engine was called correctly
         mock_agent_engine.async_stream_query.assert_called_once_with(
-            message="Test message", user_id="67890"
+            message="Test message", user_id="67890", session_id="12345"
         )
 
         # Verify chat action was sent
@@ -123,8 +123,9 @@ class TestTelegramService:
         )
 
         # Verify the response was sent back
-        mock_update.message.reply_text.assert_called_once_with(
-            "Hello! How can I help you today? This is a test response."
+        mock_update.message.reply_markdown_v2.assert_called_once_with(
+            "Hello! How can I help you today? This is a test response.",
+            disable_web_page_preview=False,
         )
 
     @pytest.mark.asyncio
@@ -213,8 +214,9 @@ class TestTelegramService:
         await telegram_service.handle_message(mock_update, mock_context)
 
         # Verify error message was sent to user
-        mock_update.message.reply_text.assert_called_once_with(
-            "I apologize, but I encountered an error processing your message. Please try again in a moment."
+        mock_update.message.reply_markdown_v2.assert_called_once_with(
+            "I encountered an error while processing your request. Please try again.",
+            disable_web_page_preview=False,
         )
 
     @pytest.mark.asyncio
@@ -236,8 +238,9 @@ class TestTelegramService:
         await telegram_service.handle_message(mock_update, mock_context)
 
         # Verify fallback error message was sent
-        mock_update.message.reply_text.assert_called_once_with(
-            "I apologize, but I couldn't generate a response. Please try again."
+        mock_update.message.reply_markdown_v2.assert_called_once_with(
+            "I apologize, but I couldn't generate a response. Please try again.",
+            disable_web_page_preview=False,
         )
 
     @pytest.mark.asyncio
@@ -259,8 +262,9 @@ class TestTelegramService:
         await telegram_service.handle_message(mock_update, mock_context)
 
         # Verify fallback error message was sent due to no valid content
-        mock_update.message.reply_text.assert_called_once_with(
-            "I apologize, but I couldn't generate a response. Please try again."
+        mock_update.message.reply_markdown_v2.assert_called_once_with(
+            "I apologize, but I couldn't generate a response. Please try again.",
+            disable_web_page_preview=False,
         )
 
     @pytest.mark.asyncio
@@ -273,8 +277,8 @@ class TestTelegramService:
         )
 
         # Verify welcome message was sent
-        mock_update.message.reply_text.assert_called_once()
-        call_args = mock_update.message.reply_text.call_args[0][0]
+        mock_update.message.reply_markdown_v2.assert_called_once()
+        call_args = mock_update.message.reply_markdown_v2.call_args[0][0]
 
         assert "Welcome to BuySpy AI Assistant!" in call_args
         assert "I'm here to help you" in call_args
@@ -294,7 +298,7 @@ class TestTelegramService:
 
         # Verify no message was sent
         if original_message:
-            original_message.reply_text.assert_not_called()
+            original_message.reply_html.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_start_command_missing_user(
@@ -309,15 +313,15 @@ class TestTelegramService:
         )
 
         # Verify no message was sent
-        mock_update.message.reply_text.assert_not_called()
+        mock_update.message.reply_html.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_start_command_send_error(
         self, telegram_service: TelegramService, mock_update: Mock
     ) -> None:
         """Test start command error handling when sending fails."""
-        # Make reply_text raise an exception
-        mock_update.message.reply_text.side_effect = Exception("Send error")
+        # Make reply_html raise an exception
+        mock_update.message.reply_html.side_effect = Exception("Send error")
 
         # Should not raise exception, just log it
         await telegram_service.start_command(
@@ -487,8 +491,8 @@ class TestTelegramService:
         async_generator = AsyncGeneratorMock(mock_events)
         mock_agent_engine.async_stream_query = Mock(return_value=async_generator)
 
-        # Make reply_text raise an exception
-        mock_update.message.reply_text.side_effect = Exception("Send error")
+        # Make reply_html raise an exception
+        mock_update.message.reply_html.side_effect = Exception("Send error")
 
         # Should handle the error gracefully
         await telegram_service.handle_message(mock_update, mock_context)

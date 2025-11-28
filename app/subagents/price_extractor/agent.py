@@ -80,6 +80,8 @@ null
 - Process FAST - you're operating in parallel with other extractors
 - Discard all HTML after extraction - don't pass it anywhere
 - Extract only what's needed, ignore everything else
+- Use only tool "scrape_as_markdown" from brightdata_toolset
+- **NEVER** call "run_price_extraction" or "extract_price_data" or "run_code"
 
 **ERROR HANDLING:**
 - If the URL is blocked: Return null

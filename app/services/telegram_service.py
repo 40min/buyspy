@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import re
 from typing import Any
+from urllib.parse import urlparse
 from venv import logger
 
 from google.adk.events.event import Event
@@ -35,6 +37,79 @@ class TelegramService:
         self.logger = logging.getLogger(__name__)
         self.application: Application | None = None
         self._sessions: set[str] = set()
+
+    def _convert_urls_to_links(self, text: str) -> str:
+        """Convert raw URLs to Markdown links with store names.
+
+        Converts:
+            https://verkkokauppa.com/fi/product/123
+        To:
+            [Verkkokauppa](https://verkkokauppa.com/fi/product/123)
+
+        Args:
+            text: Text containing raw URLs
+
+        Returns:
+            Text with URLs converted to Markdown links
+        """
+        url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
+
+        def replace_url(match: re.Match) -> str:
+            """
+            Converts a matched URL to a Markdown link with the store name.
+
+            Extracts the domain from the URL, capitalizes the store name,
+            and returns a Markdown-formatted link.
+
+            Args:
+                match: Regex match object containing the URL
+
+            Returns:
+                Markdown-formatted link string in format [StoreName](URL)
+            """
+            url = match.group(0)
+            # Extract store name from domain
+            domain = urlparse(url).netloc.replace("www.", "")
+            store_name = domain.split(".")[0].capitalize()
+            return f"[{store_name}]({url})"
+
+        return re.sub(url_pattern, replace_url, text)
+
+    def _escape_markdown_v2(self, text: str) -> str:
+        """Escape special characters for Telegram Markdown V2 format.
+
+        Args:
+            text: Text to escape
+
+        Returns:
+            Text with Markdown V2 special characters escaped
+        """
+        # Characters that need escaping in Markdown V2
+        special_chars = [
+            "_",
+            "*",
+            "[",
+            "]",
+            "(",
+            ")",
+            "~",
+            "`",
+            ">",
+            "#",
+            "+",
+            "-",
+            "=",
+            "|",
+            "{",
+            "}",
+            ".",
+            "!",
+        ]
+
+        for char in special_chars:
+            text = text.replace(char, f"\\{char}")
+
+        return text
 
     async def handle_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -124,8 +199,13 @@ class TelegramService:
                 f"Sending response ({len(response_text)} chars) to chat {chat_id}"
             )
 
-            # Send the response back to the user
-            await update.message.reply_text(response_text)
+            # Convert URLs to Markdown links, escape Markdown V2 characters, and send the response back to the user
+            formatted_text = self._convert_urls_to_links(response_text)
+            formatted_text = self._escape_markdown_v2(formatted_text)
+            self.logger.info(f"Trying to output formatted text: {formatted_text}")
+            await update.message.reply_markdown_v2(
+                formatted_text, disable_web_page_preview=False
+            )
 
         except Exception as e:
             # Include comprehensive error handling
@@ -139,7 +219,9 @@ class TelegramService:
             error_message = "I apologize, but I encountered an error processing your message. Please try again in a moment."
             try:
                 if update.message:
-                    await update.message.reply_text(error_message)
+                    await update.message.reply_markdown_v2(
+                        error_message, disable_web_page_preview=False
+                    )
             except Exception as send_error:
                 chat_id_str: str = (
                     str(update.effective_chat.id)
@@ -147,7 +229,8 @@ class TelegramService:
                     else "unknown"
                 )
                 self.logger.error(
-                    f"Failed to send error message to chat {chat_id_str}: {send_error}"
+                    f"Failed to send error message to chat {chat_id_str}: {send_error}",
+                    exc_info=True,
                 )
 
     async def _get_or_create_adk_session_id(
