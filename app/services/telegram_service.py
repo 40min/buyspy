@@ -34,7 +34,7 @@ class TelegramService:
         self.timeout_seconds = timeout_seconds
         self.logger = logging.getLogger(__name__)
         self.application: Application | None = None
-        self._sessions: dict[str, str] = {}
+        self._sessions: set[str] = set()
 
     async def handle_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -160,10 +160,8 @@ class TelegramService:
 
         # Check local storage first
         if telegram_chat_id in self._sessions:
-            logger.warning(
-                f"Using existing session ID ({self._sessions[telegram_chat_id]}) for chat {telegram_chat_id}"
-            )
-            return self._sessions[telegram_chat_id]
+            logger.warning(f"Using existing session ID ({telegram_chat_id})")
+            return telegram_chat_id
 
         try:
             # The 'user_id' parameter is for long-term memory association (Memory Bank feature)
@@ -173,12 +171,10 @@ class TelegramService:
             logger.warning(
                 f"Created new session ID ({telegram_chat_id}) for chat {telegram_chat_id}"
             )
-            self._sessions[telegram_chat_id] = telegram_chat_id
+            self._sessions.add(telegram_chat_id)
         except Exception:
             logger.warning(f"Session in ADKalready exists for chat {telegram_chat_id}")
-            self._sessions[telegram_chat_id] = telegram_chat_id
-
-        # todo: store self._sessions as a set
+            self._sessions.add(telegram_chat_id)
 
         return telegram_chat_id
 
