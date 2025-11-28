@@ -47,14 +47,25 @@ From filtered URLs (target: 3-7 unique shops), assign priority tiers:
 Sort URLs: Tier (1>2>3) → Domain (alphabetically) → Path (alphabetically)
 
 ### 4. Delegate to price_extractor_agent tool (IN PARALLEL)
-For EACH of the first 3-7 sorted URLs, call `price_extractor_agent` with:
-- URL to scrape
-- Tier assignment for that URL
-- Product name (for verification)
+**CRITICAL:** The tool you must call is named `price_extractor_agent` (not "run_price_extraction").
 
-Execute all price_extractor calls in parallel (don't wait for one to finish before starting the next).
+For EACH of the first 3-7 sorted URLs, call the `price_extractor_agent` tool with these parameters:
+- `url`: The URL to scrape (string)
+- `tier`: Tier assignment for that URL (integer: 1, 2, or 3)
+- `product_name`: Product name for verification (string)
 
-Each `price_extractor_agent` will scrape the URL and return extracted JSON or null.
+Example tool call:
+```
+price_extractor_agent(
+  url="https://verkkokauppa.com/fi/product/123",
+  tier=1,
+  product_name="Sony WH-CH520 wireless headphones"
+)
+```
+
+Execute all `price_extractor_agent` calls in parallel (don't wait for one to finish before starting the next).
+
+Each call will return extracted JSON or null.
 
 ### 5. Collect Results
 Wait for all parallel extractions to complete. Collect all non-null results.
@@ -94,7 +105,8 @@ If none: Include "error": "No available products found"
 
 **RULES:**
 - Always sort URLs deterministically before delegating
-- Call `price_extractor_agent` for EACH URL in parallel
+- Call `price_extractor_agent` tool for EACH URL in parallel
+- The tool name is `price_extractor_agent` - never call "run_price_extraction"
 - Never handle raw HTML yourself - that's the extractor's job
 - Handle selection and ranking after collecting all results
 - Return ONLY valid JSON, no extra text""",

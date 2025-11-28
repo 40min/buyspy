@@ -3,7 +3,7 @@ import os
 
 import google.auth
 from google.adk.agents import Agent
-from google.adk.apps.app import App
+from google.adk.apps.app import App, EventsCompactionConfig
 from google.adk.models.google_llm import Gemini
 from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools import AgentTool
@@ -132,4 +132,8 @@ app = App(
     plugins=[
         ReflectAndRetryToolPlugin(max_retries=10),
     ],
+    events_compaction_config=EventsCompactionConfig(
+        compaction_interval=3,  # Trigger compaction every 3 invocations
+        overlap_size=1,  # Keep 1 previous turn for context
+    ),
 )
