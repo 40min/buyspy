@@ -3,7 +3,7 @@
 # ==============================================================================
 
 # Stage 1: Builder - Install dependencies and prepare the environment
-FROM python:3.13-slim as builder
+FROM python:3.12-slim AS builder
 
 # Install system dependencies required for building
 RUN apt-get update && apt-get install -y \
@@ -19,7 +19,7 @@ ENV PATH=/root/.local/bin:$PATH
 WORKDIR /app
 
 # Copy project files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 
 # Create virtual environment and sync dependencies
 RUN uv venv /opt/venv
@@ -30,17 +30,20 @@ RUN uv sync --no-dev --no-cache
 # Stage 2: Runtime - Final image with Node.js for BrightData MCP
 # ==============================================================================
 
-FROM python:3.13-slim as runtime
+FROM python:3.12-slim AS runtime
+
+# Install curl first, then use it to install Node.js
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js for BrightData MCP tool (npx)
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
-
-# Install additional runtime dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
 RUN groupadd -r buyspy && useradd -r -g buyspy -m -d /app -s /bin/bash buyspy
