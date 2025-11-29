@@ -102,6 +102,7 @@ Wait for all parallel extractions to complete. Collect all non-null results.
 ### 6. Select Top 5
 From collected results:
 1. Filter: Keep only "In Stock" or "Limited Availability"
+2. Deduplicate: Remove duplicates with same store name and price
 2. Sort by price (lowest first, numerical comparison)
 3. For price ties: Prefer Tier 1 > country domains (.fi, .de) > earlier in list
 4. Take first 5
