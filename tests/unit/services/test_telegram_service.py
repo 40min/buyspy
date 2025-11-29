@@ -49,6 +49,7 @@ class TestTelegramService:
         update.message = Mock(spec=Message)
         update.message.text = "Test message"
         update.message.reply_markdown_v2 = AsyncMock()
+        update.message.reply_text = AsyncMock()
 
         # Mock effective_chat
         update.effective_chat = Mock(spec=Chat)
@@ -124,7 +125,7 @@ class TestTelegramService:
 
         # Verify the response was sent back
         mock_update.message.reply_markdown_v2.assert_called_once_with(
-            "Hello! How can I help you today? This is a test response.",
+            "Hello\\! How can I help you today? This is a test response\\.\n",
             disable_web_page_preview=False,
         )
 
@@ -203,19 +204,18 @@ class TestTelegramService:
     ) -> None:
         """Test error handling for agent engine failures."""
 
-        # Mock agent engine to raise an exception
-        async def mock_stream_query(
-            message: str, user_id: str
-        ) -> AsyncIterator[dict[str, Any]]:
+        # Mock agent engine to raise an exception immediately
+        async def mock_stream_query(*args, **kwargs) -> AsyncIterator[dict[str, Any]]:
+            # Immediately raise an exception
             raise Exception("Agent engine error")
 
-        mock_agent_engine.async_stream_query = AsyncMock(side_effect=mock_stream_query)
+        mock_agent_engine.async_stream_query = Mock(side_effect=mock_stream_query)
 
         await telegram_service.handle_message(mock_update, mock_context)
 
         # Verify error message was sent to user
         mock_update.message.reply_markdown_v2.assert_called_once_with(
-            "I encountered an error while processing your request. Please try again.",
+            "I encountered an error while processing your request\\. Please try again\\.\n",
             disable_web_page_preview=False,
         )
 
@@ -239,7 +239,7 @@ class TestTelegramService:
 
         # Verify fallback error message was sent
         mock_update.message.reply_markdown_v2.assert_called_once_with(
-            "I apologize, but I couldn't generate a response. Please try again.",
+            "I apologize, but I couldn't generate a response\\. Please try again\\.\n",
             disable_web_page_preview=False,
         )
 
@@ -263,7 +263,7 @@ class TestTelegramService:
 
         # Verify fallback error message was sent due to no valid content
         mock_update.message.reply_markdown_v2.assert_called_once_with(
-            "I apologize, but I couldn't generate a response. Please try again.",
+            "I apologize, but I couldn't generate a response\\. Please try again\\.\n",
             disable_web_page_preview=False,
         )
 
@@ -277,8 +277,8 @@ class TestTelegramService:
         )
 
         # Verify welcome message was sent
-        mock_update.message.reply_markdown_v2.assert_called_once()
-        call_args = mock_update.message.reply_markdown_v2.call_args[0][0]
+        mock_update.message.reply_text.assert_called_once()
+        call_args = mock_update.message.reply_text.call_args[0][0]
 
         assert "Welcome to BuySpy AI Assistant!" in call_args
         assert "I'm here to help you" in call_args

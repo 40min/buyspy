@@ -93,7 +93,7 @@ class TelegramService:
                 )
 
                 # Wait for completion with timeout
-                response_text, event_count = await asyncio.wait_for(
+                response_text, _event_count = await asyncio.wait_for(
                     processing_task, timeout=self.timeout_seconds
                 )
 

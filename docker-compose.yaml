@@ -14,14 +14,14 @@ services:
     volumes:
      - ./.env:/app/.env:ro
      # Mount from encrypted folder on QNAP
-     - /share/docker-secrets/service-account-key.json:/root/service-account-key.json:ro
+     - /share/docker-secrets/service-account-key.json:/app/service-account-key.json:ro
 
 
     # Environment variables for Google Cloud
     # Environment variables for Google Cloud
     environment:
       # Point to the mounted service account key
-      GOOGLE_APPLICATION_CREDENTIALS: /root/service-account-key.json
+      GOOGLE_APPLICATION_CREDENTIALS: /app/service-account-key.json
 
       # Python environment
       PYTHONPATH: /app
