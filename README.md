@@ -16,7 +16,7 @@ This project is built using Google's Agent Development Kit (ADK) and demonstrate
 -   **Intelligent Intent Detection:** Automatically routes queries to appropriate agents (shopping vs. general knowledge).
 -   **Personalization & Memory:** Remembers user preferences and conversation context across sessions using ADK's built-in memory system.
 -   **Localized Search:** Tailors product search results to your country.
--   **Enterprise Web Scraping:** Uses BrightData MCP for reliable SERP search and web crawling.
+-   **Enterprise Web Scraping:** Uses BrightData's Streamable HTTP MCP service for reliable SERP search and web crawling.
 -   **Parallel Price Extraction:** Efficiently scrapes multiple stores simultaneously for best prices.
 -   **Smart Aggregator Handling:** Detects price comparison sites and automatically navigates to actual shop pages.
 -   **Comparison Summaries:** Generates easy-to-read markdown tables comparing product options with pricing and availability.
@@ -27,7 +27,7 @@ This project is built using Google's Agent Development Kit (ADK) and demonstrate
 -   **AI/Agent Framework:** Google Agent Development Kit (ADK)
 -   **LLM:** Google Gemini 2.5 Flash (via Vertex AI)
 -   **Interface:** `python-telegram-bot` (using polling)
--   **Web Scraping:** BrightData MCP Server (enterprise SERP & web crawling)
+-   **Web Scraping:** BrightData Streamable HTTP MCP Service (enterprise SERP & web crawling)
 -   **Memory:** ADK built-in memory system with auto-save
 -   **Cloud Services:**
     -   Google Cloud Vertex AI (LLM)
@@ -49,11 +49,11 @@ buyspy/
 │   ├── subagents/       # Specialized agent implementations
 │   │   ├── orchestrator/    # Root agent coordinating all subagents
 │   │   ├── research/        # Product research agent (Google Search)
-│   │   ├── shopping/        # Shopping agent (BrightData SERP)
+│   │   ├── shopping/        # Shopping agent (BrightData Streamable HTTP MCP)
 │   │   ├── price_extractor/ # Price extraction agent (web scraping)
 │   │   └── smalltalk/       # General conversation agent
 │   ├── tools/           # Custom tools and MCP integrations
-│   │   └── search_tools_bd.py # BrightData MCP toolset
+│   │   └── search_tools_bd.py # BrightData Streamable HTTP MCP toolset
 │   ├── services/        # Service layer (Telegram, etc.)
 │   └── app_utils/       # Utilities and helpers
 ├── .github/             # CI/CD pipeline configurations
@@ -230,7 +230,7 @@ BuySpy uses a **multi-agent architecture** where specialized agents handle diffe
                                    │                      │     │
                                    │ Web scraping &       │     │
                                    │ price extraction     │     │
-                                   │ (BrightData MCP)     │     │
+                                   │(BrightData HTTP MCP) │     │
                                    └──────────────────────┘     │
 ```
 

@@ -1,40 +1,35 @@
 """
-BrightData Local MCP integration module.
+BrightData Streamable HTTP MCP integration module.
 
-This module provides integration with BrightData's Local MCP server (@brightdata/mcp)
+This module provides integration with BrightData's Streamable HTTP MCP server
 for enterprise-grade SERP and web crawling capabilities.
 """
 
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-from mcp import StdioServerParameters
 
 from app.config import get_settings
 
 
 def _create_brightdata_toolset() -> McpToolset:
     """
-    Create the BrightData MCP toolset using StdioConnectionParams.
+    Create the BrightData MCP toolset using StreamableHTTPConnectionParams.
 
     This function initializes the MCP toolset with the following configuration:
-    - Command: npx
-    - Args: ["-y", "@brightdata/mcp"]
-    - Environment: API_TOKEN injected from settings
+    - URL: https://mcp.brightdata.com/mcp
+    - Authentication: API token passed via query parameter
 
     Returns:
         McpToolset: Configured MCP toolset instance for BrightData services
     """
     settings = get_settings()
 
+    # Construct URL with token as query parameter
+    url = f"https://mcp.brightdata.com/mcp?token={settings.brightdata_api_token}"
+
     return McpToolset(
-        connection_params=StdioConnectionParams(
-            server_params=StdioServerParameters(
-                command="npx",
-                args=["-y", "@brightdata/mcp"],
-                env={
-                    "API_TOKEN": settings.brightdata_api_token,
-                },
-            ),
+        connection_params=StreamableHTTPConnectionParams(
+            url=url,
             timeout=settings.brightdata_api_timeout,
         )
     )
