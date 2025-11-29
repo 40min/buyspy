@@ -7,43 +7,91 @@
 
 ## 1. Problem Statement
 
-Online shopping is overwhelming and impersonal. Consumers spend hours sifting through countless product pages, comparing specifications, and struggling to distinguish genuine feedback from sponsored content or fake reviews. This leads to decision fatigue and a lack of trust. Furthermore, existing shopping assistants are generic and disconnected from the user's local context. They fail to understand personal preferences, cannot search popular local marketplaces for second-hand goods, and offer a one-size-fits-all experience that ignores regional nuances, resulting in irrelevant recommendations and a frustrating process.
+Online shopping is overwhelming and impersonal. Consumers spend hours sifting through countless product pages, comparing specifications, and struggling to find the best prices across multiple retailers. This leads to decision fatigue and wasted time. Furthermore, existing shopping assistants are generic and disconnected from the user's local context. They fail to understand personal preferences, cannot efficiently compare prices across stores, and offer a one-size-fits-all experience that ignores regional nuances, resulting in irrelevant recommendations and a frustrating process.
 
 ## 2. Proposed Solution
 
-I will be building **BuySpy**, an AI-powered shopping concierge agent that delivers a deeply personalized and localized shopping experience. BuySpy acts as your personal shopper via a simple chat interface (Telegram), doing the heavy lifting of product research, review analysis, and vendor vetting.
+**BuySpy** is an AI-powered shopping concierge agent that delivers a personalized and localized shopping experience. BuySpy acts as your personal shopper via a simple chat interface (Telegram), doing the heavy lifting of product research, price comparison, and intelligent routing between shopping and general conversation.
 
-It not only learns and remembers your style but also leverages a team of specialized agents to search global e-commerce sites, local marketplaces like Finland's Tori.fi, and analyze community feedback. By synthesizing this information, BuySpy provides comprehensive, trustworthy, and relevant options, transforming online shopping from a stressful task into a seamless and personalized conversation.
+It leverages a team of specialized agents working in parallel to search for products, extract prices from multiple retailers, and provide comprehensive comparisons. Using enterprise-grade web scraping through BrightData MCP, BuySpy efficiently navigates e-commerce sites and price comparison platforms to find the best available deals. The system remembers user preferences and conversation context, transforming online shopping from a stressful task into a seamless and personalized conversation.
 
 ## 3. Core Functionality & Technical Architecture
 
-BuySpy is architected as a modular, multi-agent system where a central orchestrator delegates tasks to a team of specialized agents. This design allows for clear separation of concerns and showcases advanced agentic patterns.
+BuySpy is architected as a modular, multi-agent system where a central orchestrator delegates tasks to a team of specialized agents. This design allows for clear separation of concerns and showcases advanced agentic patterns including parallel execution and intelligent routing.
 
-The system is orchestrated by the **`OrchestratorAgent`**, the primary user-facing component. It manages the conversational flow, understands user intent, and maintains both short-term session state and **long-term memory** of user preferences (e.g., name, clothing size, favorite brands) via a custom **Memory Bank** tool connected to a Google Cloud Firestore database.
+### Agent Architecture
 
-When a user makes a request, the `OrchestratorAgent` devises a plan and invokes one or more specialist agents:
+The system is orchestrated by the **`root_agent`** (Orchestrator), the primary user-facing component. It manages the conversational flow, detects user intent (shopping vs. general conversation), handles country detection, and maintains conversation context through ADK's built-in memory system with auto-save functionality.
 
-*   **`LocationAgent`:** To provide localized results, this agent's sole purpose is to determine the user's shopping region, ensuring subsequent searches are relevant.
-*   **`TranslationAgent`:** To break down language barriers, this agent uses a **custom tool** wrapping the Google Cloud Translation API. It can translate a user's query into the local language required for a specific marketplace search.
-*   **`WebSearchAgent`:** This agent is the primary tool for researching new products. Equipped with the **built-in Google Search tool**, it scours the web for product listings and specifications.
-*   **`ToriSearchAgent`:** This agent is the key to unlocking the local market. It is equipped with a powerful **custom tool**—a web scraper designed specifically for Tori.fi, Finland's premier second-hand marketplace. It finds relevant local listings, a task impossible for generic shopping assistants.
-*   **`ReviewAgent`:** To build user trust, this agent is responsible for vetting both products and sellers. It uses a hybrid approach:
-    *   For **product quality**, it employs the **Google Search tool** with specialized prompts to find and synthesize review summaries, pros, and cons from articles and forums.
-    *   For **vendor trustworthiness**, it uses a **custom tool** that integrates with the **Google Places API** to fetch structured data like star ratings and review counts for specific shops.
+When a user makes a request, the `root_agent` analyzes intent and invokes one or more specialist agents:
 
-This architecture allows for complex, dynamic workflows. For a query like "Find me a good quality used camera from a reputable shop in Helsinki," the `OrchestratorAgent` could run the `ToriSearchAgent` and the `ReviewAgent` in **parallel**, presenting a curated list of options that are both available and well-regarded.
+#### Specialist Agents
 
-## 4. Key Features in MVP
+*   **`smalltalk_agent`:** Handles general knowledge questions, casual conversations, and non-shopping queries. Uses Google Search for current information and has a witty, engaging personality. Examples: "What's the capital of Finland?", "Tell me about quantum physics", "Recommend a good book".
 
-*   **Conversational Interface:** Natural language interaction via a Telegram bot.
-*   **Personalization & Long-Term Memory:** Remembers user details like name, size, and brand preferences across sessions.
-*   **Localized Search:** Identifies user's region to tailor searches.
-*   **Dual Market Search:** Finds both new items (via Google Search) and used items (via a custom Tori.fi tool).
-*   **Review Analysis & Shop Vetting:** Summarizes product pros and cons from web articles and fetches concrete ratings for local shops using the Google Places API.
-*   **Comparison Summaries:** Presents structured comparisons of products in easy-to-read markdown tables.
+*   **`research_agent`:** Performs product research to find top recommendations for a given category and country. Uses Google Search with specialized prompts to identify 1-5 recommended models with reasoning (e.g., "Best Value", "Best Battery Life"). Returns structured JSON with model names and reasons.
 
-## 5. Future Enhancements (Post-MVP)
+*   **`shopping_agent`:** The main price-finding agent that coordinates the shopping workflow:
+    1. Uses BrightData MCP's SERP search to find product listings
+    2. Filters and deduplicates URLs by domain
+    3. Prioritizes URLs into tiers (official stores, local retailers, international sites)
+    4. Delegates to multiple `price_extractor_agent` instances **in parallel**
+    5. Collects and ranks results by price and availability
 
-*   **Proactive Monitoring Agent:** A long-running agent to track items for price drops, flash sales, or restocks, demonstrating Long-Running Operations (LROs).
-*   **Advanced Gift Recommendations:** A specialized agent that reasons about gift ideas based on a recipient's profile and budget.
-*   **Style/Mood Board Inspiration:** Allow users to send an image of an outfit to find visually similar items, leveraging multimodal models.
+*   **`price_extractor_agent`:** Specialized web scraping agent that:
+    1. Scrapes individual product pages using BrightData MCP
+    2. Detects if page is a price comparison site (aggregator) or direct shop
+    3. If aggregator: finds best price, extracts shop URL, and rescrapes the actual shop
+    4. Extracts price, currency, store name, availability status
+    5. Returns structured JSON or null if extraction fails
+
+### Key Technical Features
+
+*   **BrightData MCP Integration:** Enterprise-grade SERP search and web crawling via Model Context Protocol (MCP), providing reliable scraping with automatic redirect handling.
+
+*   **Parallel Execution:** The shopping agent calls multiple price extractor agents simultaneously (one per URL), significantly improving response time.
+
+*   **Smart Aggregator Detection:** Price extractor automatically detects price comparison sites and navigates to actual shop pages, handling redirect URLs transparently.
+
+*   **Memory System:** Uses ADK's built-in memory with `load_memory` tool and auto-save callback, maintaining conversation context and user preferences across sessions.
+
+*   **Intent-Based Routing:** Orchestrator intelligently routes between shopping workflow and general conversation based on query analysis.
+
+This architecture allows for complex, dynamic workflows. For a query like "Best headphones in Finland," the orchestrator would:
+1. Detect shopping intent and country
+2. Call `research_agent` to get recommendations
+3. Present options and ask user which to price check
+4. Call `shopping_agent` which spawns multiple `price_extractor_agent` instances in parallel
+5. Compile and format results with prices, stores, and availability
+
+## 4. Key Features (Current Implementation)
+
+*   **Conversational Interface:** Natural language interaction via a Telegram bot with Markdown V2 formatting.
+*   **Multi-Agent System:** Five specialized agents working together (orchestrator, research, shopping, price extractor, smalltalk).
+*   **Intelligent Intent Detection:** Automatically routes between shopping queries and general conversation.
+*   **Memory & Context:** Remembers conversation context and user preferences using ADK's built-in memory system.
+*   **Localized Search:** Identifies user's country to tailor product searches and results.
+*   **Product Research:** Finds top recommended products for any category using Google Search.
+*   **Parallel Price Extraction:** Efficiently scrapes multiple stores simultaneously for best prices.
+*   **Smart Aggregator Handling:** Automatically detects price comparison sites and navigates to actual shop pages.
+*   **Enterprise Web Scraping:** Uses BrightData MCP for reliable SERP search and web crawling.
+*   **Comparison Summaries:** Presents structured comparisons with prices, stores, availability, and store tier ratings.
+*   **General Knowledge:** Handles non-shopping queries with a witty, engaging personality.
+
+## 5. Future Enhancements
+
+### High Priority
+*   **Local Marketplace Integration (Tori.fi):** Add support for searching Finland's premier second-hand marketplace with custom scraping tools.
+*   **Review Analysis & Vendor Vetting:** Integrate Google Places API to fetch shop ratings and review counts for trust building.
+*   **Translation Service:** Add automatic translation for queries in non-English markets.
+
+### Medium Priority
+*   **Custom Firestore Memory:** Migrate from ADK's built-in memory to custom Firestore implementation for more control over user profiles and interaction history.
+*   **Location Detection Agent:** Dedicated agent for determining user's shopping region automatically.
+*   **Enhanced Error Handling:** More robust retry logic and fallback mechanisms for external API failures.
+
+### Long-term Vision
+*   **Proactive Monitoring Agent:** Long-running agent to track items for price drops, flash sales, or restocks (demonstrating LROs).
+*   **Advanced Gift Recommendations:** Specialized agent that reasons about gift ideas based on recipient's profile and budget.
+*   **Style/Mood Board Inspiration:** Allow users to send images to find visually similar items, leveraging multimodal models.
+*   **Multi-marketplace Support:** Expand to other European marketplaces (Blocket, Marktplaats, Leboncoin).

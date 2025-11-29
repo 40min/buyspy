@@ -12,22 +12,27 @@ This project is built using Google's Agent Development Kit (ADK) and demonstrate
 ## ✨ Features
 
 -   **Conversational Interface:** Chat with BuySpy naturally on Telegram.
--   **Personalization:** Remembers your name, size, and favorite brands.
--   **Localized Search:** Tailors results to your country.
--   **New & Used Items:** Searches Google for new items and local marketplaces (like Tori.fi) for used ones.
--   **Review Vetting:** Summarizes product reviews and checks vendor ratings using the Google Places API to build trust.
--   **Comparison Summaries:** Generates easy-to-read tables comparing product options.
+-   **Multi-Agent Architecture:** Specialized agents for research, shopping, price extraction, and general conversation.
+-   **Intelligent Intent Detection:** Automatically routes queries to appropriate agents (shopping vs. general knowledge).
+-   **Personalization & Memory:** Remembers user preferences and conversation context across sessions using ADK's built-in memory system.
+-   **Localized Search:** Tailors product search results to your country.
+-   **Enterprise Web Scraping:** Uses BrightData MCP for reliable SERP search and web crawling.
+-   **Parallel Price Extraction:** Efficiently scrapes multiple stores simultaneously for best prices.
+-   **Smart Aggregator Handling:** Detects price comparison sites and automatically navigates to actual shop pages.
+-   **Comparison Summaries:** Generates easy-to-read markdown tables comparing product options with pricing and availability.
 
 ## 🛠️ Tech Stack
 
--   **Backend:** Python 3.11+, FastAPI
+-   **Backend:** Python 3.11+
 -   **AI/Agent Framework:** Google Agent Development Kit (ADK)
--   **LLM:** Google Gemini (via Vertex AI)
+-   **LLM:** Google Gemini 2.5 Flash (via Vertex AI)
 -   **Interface:** `python-telegram-bot` (using polling)
+-   **Web Scraping:** BrightData MCP Server (enterprise SERP & web crawling)
+-   **Memory:** ADK built-in memory system with auto-save
 -   **Cloud Services:**
-    -   Google Cloud Firestore (for long-term memory)
-    -   Google Cloud Translation API
-    -   Google Places API
+    -   Google Cloud Vertex AI (LLM)
+    -   Google Cloud Trace & Logging (observability)
+    -   BigQuery (event storage & analytics)
 -   **Dependency Management:** uv
 -   **Local Testing:** Streamlit Playground
 -   **Infrastructure:** Terraform (for Google Cloud deployment)
@@ -37,15 +42,26 @@ This project is built using Google's Agent Development Kit (ADK) and demonstrate
 ```
 buyspy/
 ├── app/                 # Core application code
-│   ├── agent.py         # Main agent logic
+│   ├── agent.py         # Main app instance
 │   ├── agent_engine_app.py # Agent Engine application logic
-│   └── app_utils/       # App utilities and helpers
-├── .github/             # CI/CD pipeline configurations for GitHub Actions
+│   ├── config.py        # Configuration management
+│   ├── dependencies.py  # Dependency injection
+│   ├── subagents/       # Specialized agent implementations
+│   │   ├── orchestrator/    # Root agent coordinating all subagents
+│   │   ├── research/        # Product research agent (Google Search)
+│   │   ├── shopping/        # Shopping agent (BrightData SERP)
+│   │   ├── price_extractor/ # Price extraction agent (web scraping)
+│   │   └── smalltalk/       # General conversation agent
+│   ├── tools/           # Custom tools and MCP integrations
+│   │   └── search_tools_bd.py # BrightData MCP toolset
+│   ├── services/        # Service layer (Telegram, etc.)
+│   └── app_utils/       # Utilities and helpers
+├── .github/             # CI/CD pipeline configurations
 ├── deployment/          # Infrastructure and deployment scripts
-├── notebooks/           # Jupyter notebooks for prototyping and evaluation
+├── notebooks/           # Jupyter notebooks for prototyping
 ├── tests/               # Unit, integration, and load tests
-├── Makefile             # Makefile for common commands
-├── GEMINI.md            # AI-assisted development guide
+├── telegram_bot.py      # Telegram bot entrypoint
+├── Makefile             # Common commands
 └── pyproject.toml       # Project dependencies and configuration
 ```
 
@@ -79,8 +95,9 @@ buyspy/
 3.  **Enable GCP APIs:**
     In your Google Cloud project, make sure you have enabled the following APIs:
     -   Vertex AI API
-    -   Cloud Translation API
-    -   Places API
+    -   Cloud Trace API
+    -   Cloud Logging API
+    -   BigQuery API (for event storage)
 
 4.  **Configure Environment Variables:**
     Create a `.env` file in the root directory by copying the example file:
@@ -89,12 +106,16 @@ buyspy/
     ```
     Now, fill in the values in your `.env` file:
     ```env
-    # Google Cloud (for services like Firestore, Translate, Vertex AI)
+    # Google Cloud (for Vertex AI, Trace, Logging)
     GCP_PROJECT_ID="your-gcp-project-id"
     GCP_REGION="your-gcp-region" # e.g., europe-west1
 
     # Telegram
     TELEGRAM_BOT_TOKEN="your-telegram-bot-token"
+
+    # BrightData (for web scraping)
+    BRIGHTDATA_API_TOKEN="your-brightdata-api-token"
+    BRIGHTDATA_API_TIMEOUT=300
     ```
 
 5.  **Install dependencies:**
@@ -177,15 +198,59 @@ The test suite covers key components:
 
 *Test status badges will be added here once CI/CD integration is complete.*
 
+## 🏗️ Architecture
+
+BuySpy uses a **multi-agent architecture** where specialized agents handle different aspects of the shopping experience:
+
+### Agent Hierarchy
+
+```
+┌─────────────────────────────────────────┐
+│         root_agent (Orchestrator)       │
+│  - Intent detection                     │
+│  - Country detection                    │
+│  - Response formatting                  │
+│  - Memory management                    │
+└─────────────────┬───────────────────────┘
+                  │
+        ┌─────────┴─────────┬──────────────┬──────────────┐
+        │                   │              │              │
+┌───────▼────────┐  ┌──────▼──────┐ ┌────▼─────┐ ┌─────▼──────┐
+│ smalltalk_agent│  │research_agent│ │shopping_ │ │            │
+│                │  │              │ │  agent   │ │            │
+│ General chat & │  │ Product      │ │          │ │            │
+│ knowledge      │  │ research via │ │ Price    │ │            │
+│ (Google Search)│  │ Google Search│ │ finding  │ │            │
+└────────────────┘  └──────────────┘ │(BrightData│ │            │
+                                     │   MCP)   │ │            │
+                                     └────┬─────┘ │            │
+                                          │       │            │
+                                   ┌──────▼───────▼──────┐     │
+                                   │ price_extractor_agent│     │
+                                   │                      │     │
+                                   │ Web scraping &       │     │
+                                   │ price extraction     │     │
+                                   │ (BrightData MCP)     │     │
+                                   └──────────────────────┘     │
+```
+
+### Key Features
+
+-   **Intent Detection:** Orchestrator automatically routes queries to appropriate agents
+-   **Parallel Execution:** Shopping agent calls multiple price extractors simultaneously
+-   **Smart Scraping:** Price extractor detects aggregator sites and navigates to actual shops
+-   **Memory System:** ADK's built-in memory with auto-save after each turn
+-   **Error Resilience:** Retry logic and graceful degradation when tools fail
+
 ## 🔄 Development Process
 
 This project follows a structured development approach:
 
-1. **Prototype:** Build your BuySpy AI agent using the intro notebooks in `notebooks/` for guidance. Use Vertex AI Evaluation to assess performance.
-2. **Integrate:** Customize your agent logic by editing `app/agent.py` to implement shopping concierge features.
-3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
-4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. For streamlined infrastructure deployment, simply run `make setup-dev-env` or `uvx agent-starter-pack setup-cicd`.
-5. **Monitor:** Track performance and gather insights using Cloud Logging, Tracing, and the Looker Studio dashboard to iterate on your application.
+1. **Prototype:** Build and test agents using the intro notebooks in `notebooks/` for guidance.
+2. **Integrate:** Customize agent logic in `app/subagents/` to implement new features.
+3. **Test:** Use the Streamlit playground with `make playground` for rapid iteration. The playground auto-reloads on code changes.
+4. **Deploy:** Set up CI/CD pipelines with `make setup-dev-env` or `uvx agent-starter-pack setup-cicd`.
+5. **Monitor:** Track performance using Cloud Logging, Tracing, and the Looker Studio dashboard.
 
 ## 🚀 Deployment Options
 
