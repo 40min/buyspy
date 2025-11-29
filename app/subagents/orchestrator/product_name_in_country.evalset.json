@@ -1,0 +1,76 @@
+{
+  "eval_set_id": "product_name_in_country",
+  "name": "product_name_in_country",
+  "eval_cases": [
+    {
+      "eval_id": "golden path",
+      "conversation": [
+        {
+          "invocation_id": "e-024ad5e9-9dff-4c26-8780-3ac67ab8be6f",
+          "user_content": {
+            "parts": [
+              {
+                "text": "Philips TAH9505 price in Finland"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "💰 *Pricing Results:*\n\n*Product:* Philips TAH9505\n*Found Prices:*\n- *149.00 EUR* at [Power](https://hintaopas.fi/product.php?p=5680612) ✅ In Stock ⭐\n- *195.18 EUR* at [Hobbyhall.fi](https://hobbyhall.fi/fi/tietokoneet-ja-pelaaminen/tietokoneen-lisalaitteet/kuulokkeet/philips-langattomat-over-ear-hybridimelunvaimennuksella-kuulokkeet-tah9505bk00?id=493973) ✅ In Stock ⭐\n📊 *Total Found:* 2"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "root_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-1d11bbfc-dd00-4354-85f0-98ad14069995",
+                        "args": {
+                          "request": "Philips TAH9505 price in Finland"
+                        },
+                        "name": "shopping_agent"
+                      },
+                      "thought_signature": "CtMCAePx_156DgqFdOkUNOM5k0WCMIvLjE2iAVQZD536JhRUr6eOl6-Ij4_fd93jNmDSu_FK0GLrqQ_3pwQOuweLXSw779UsuK01TUm9lXY-UsHvpE95FMu0AaqQhqd6xWBWf3DKbdWEsKPquXhjBQUaqayRSv4gXsN8aJrzNPifdtBmanI_muPAj2-HlJ9peiZL6onSnjtac1hgaPfdFG8l5F3zs1J1yax04LI7TPpLdXHlX_S0wLG6i4TJBqrGE6EqLvrsNSJpFNEuIO1wn_gTisUORU1KxZKLlPNP91pw03bzCh0QFNwKIhgYtMxHX8wq9SaDZBfhSBBXfuAd7woxoavc0MXVq0W8KX7Pm4jxTJzJrYUZqEk4TY5j8_f8YKl8CjV1huOYv4C3y9T3a55vTw2WFo7heorreKwRo5XprpJ3xB3WJus-GQ4ExBrJbMOIOqij"
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "root_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-1d11bbfc-dd00-4354-85f0-98ad14069995",
+                        "name": "shopping_agent",
+                        "response": {
+                          "result": "```json\n{\n  \"product\": \"Philips TAH9505\",\n  \"country\": \"Finland\",\n  \"results\": [\n    {\n      \"rank\": 1,\n      \"price\": \"149.00 EUR\",\n      \"store\": \"Power\",\n      \"url\": \"https://hintaopas.fi/product.php?p=5680612\",\n      \"status\": \"In Stock\"\n    },\n    {\n      \"rank\": 2,\n      \"price\": \"195.18 EUR\",\n      \"store\": \"Hobbyhall.fi\",\n      \"url\": \"https://hobbyhall.fi/fi/tietokoneet-ja-pelaaminen/tietokoneen-lisalaitteet/kuulokkeet/philips-langattomat-over-ear-hybridimelunvaimennuksella-kuulokkeet-tah9505bk00?id=493973\",\n      \"status\": \"In Stock\"\n    }\n  ],\n  \"total_found\": 2,\n  \"note\": \"Only 2 results available\"\n}\n```"
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1764448195.047273
+        }
+      ],
+      "session_input": {
+        "app_name": "orchestrator",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1764450945.21505
+    }
+  ],
+  "creation_timestamp": 1764450929.850591
+}

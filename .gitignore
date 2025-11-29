@@ -203,3 +203,6 @@ my_env.tfvars
 tools/a2a-inspector/
 
 .kilocode
+
+# adk
+.adk
