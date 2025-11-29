@@ -1,79 +1,78 @@
 # ==============================================================================
-# BuySpy Telegram Bot - Multi-stage Docker Build
+# BuySpy Telegram Bot - Multi-stage Docker Build with pip
 # ==============================================================================
 
-# Stage 1: Builder - Install dependencies and prepare the environment
+# Build stage
 FROM python:3.12-slim AS builder
 
-# Install system dependencies required for building
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    curl \
+    gcc \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv package manager
-RUN curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh
-ENV PATH=/root/.local/bin:$PATH
+# Set environment for user installation
+ENV PYTHONUSERBASE=/tmp/.local
+ENV PATH=/tmp/.local/bin:$PATH
 
 # Set working directory
 WORKDIR /app
 
 # Copy project files
 COPY pyproject.toml ./
+COPY README.md ./
 
-# Create virtual environment and sync dependencies
-RUN uv venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN uv sync --no-dev --no-cache
+# Install Python dependencies
+RUN pip install --user --no-cache-dir -e .
 
 # ==============================================================================
-# Stage 2: Runtime - Final image with Node.js for BrightData MCP
+# Runtime stage
 # ==============================================================================
 
-FROM python:3.12-slim AS runtime
-
-# Install curl first, then use it to install Node.js
-RUN apt-get update && apt-get install -y \
-    curl \
-    ca-certificates \
-    gnupg \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.12-slim
 
 # Install Node.js for BrightData MCP tool (npx)
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUSERBASE=/app/.local
+ENV PATH=/app/.local/bin:$PATH
+
+# Set work directory
+WORKDIR /app
+
+# Create non-root user
 RUN groupadd -r buyspy && useradd -r -g buyspy -m -d /app -s /bin/bash buyspy
 
-# Copy virtual environment from builder stage
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Copy Python dependencies from builder stage
+COPY --from=builder /tmp/.local /app/.local
 
 # Copy application code
-WORKDIR /app
 COPY --chown=buyspy:buyspy app/ ./app/
 COPY --chown=buyspy:buyspy telegram_bot.py ./
 COPY --chown=buyspy:buyspy .env.example ./
 
+# Change ownership to non-root user
+RUN chown -R buyspy:buyspy /app
+
 # Switch to non-root user
 USER buyspy
 
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD uv run python -c "import sys; sys.exit(0)" || exit 1
+    CMD python -c "import sys; sys.exit(0)" || exit 1
 
 # Expose port (if needed for future extensions)
 EXPOSE 8080
 
-# Debug command (temporary - remove after troubleshooting)
-# CMD ["sh", "-c", "echo 'Python path:'; which python; echo 'Installed packages:'; uv run pip list | grep google; echo 'Running bot:'; uv run python telegram_bot.py"]
-
 # Run the telegram bot
-CMD ["uv", "run", "python", "telegram_bot.py"]
+CMD ["python", "telegram_bot.py"]
