@@ -67,10 +67,13 @@ ENV PYTHONUNBUFFERED=1
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)" || exit 1
+    CMD uv run python -c "import sys; sys.exit(0)" || exit 1
 
 # Expose port (if needed for future extensions)
 EXPOSE 8080
+
+# Debug command (temporary - remove after troubleshooting)
+# CMD ["sh", "-c", "echo 'Python path:'; which python; echo 'Installed packages:'; uv run pip list | grep google; echo 'Running bot:'; uv run python telegram_bot.py"]
 
 # Run the telegram bot
 CMD ["uv", "run", "python", "telegram_bot.py"]
