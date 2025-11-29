@@ -57,6 +57,7 @@ buyspy/
 -   **Google Cloud SDK**: For authenticating to GCP services - [Install](https://cloud.google.com/sdk/docs/install)
 -   **make**: Build automation tool (pre-installed on most Unix-based systems)
 -   **Terraform**: For infrastructure deployment - [Install](https://developer.hashicorp.com/terraform/downloads)
+-   **Docker & Docker Compose** (optional, for containerized deployment): [Install Docker](https://docs.docker.com/get-docker/)
 -   A Telegram Bot Token from BotFather.
 -   A Google Cloud Project with billing enabled.
 
@@ -130,6 +131,8 @@ This project uses two main components for local development: the ADK agent serve
 | `make test`          | Run unit and integration tests                                                              |
 | `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
 | `make setup-dev-env` | Set up development environment resources using Terraform                         |
+| `docker-compose up --build` | Build and run the bot in Docker containers |
+| `docker-compose down` | Stop the Docker containers |
 
 For full command options and usage, refer to the [Makefile](Makefile).
 
@@ -188,18 +191,39 @@ This project follows a structured development approach:
 
 ### Docker Deployment (Local)
 
-The primary deployment target is a local server using Docker.
+The application can be easily deployed locally using Docker and Docker Compose.
 
-1.  **Build the Docker Image:**
+#### Prerequisites for Docker Deployment
+
+- **Docker & Docker Compose**: [Install Docker](https://docs.docker.com/get-docker/)
+- **Environment Configuration**: Create your `.env` file as described in the Installation section
+
+#### Quick Start with Docker
+
+1. **Clone and setup the project:**
     ```bash
-    docker build -t buyspy-agent .
+    git clone https://github.com/<your-username>/buyspy.git
+    cd buyspy
+    cp .env.example .env
+    # Edit .env with your configuration
     ```
 
-2.  **Run with Docker Compose:**
-    A `docker-compose.yml` file is provided to run the FastAPI agent server and the Telegram polling script as two separate, connected services.
+2. **Build and run with Docker Compose:**
     ```bash
-    docker-compose up
+    docker-compose up --build
     ```
+
+The bot will start automatically and begin polling for Telegram messages.
+
+#### Docker Commands
+
+| Command | Description |
+|---------|-------------|
+| `docker-compose up --build` | Build and start the bot |
+| `docker-compose up -d` | Run in background |
+| `docker-compose down` | Stop the bot |
+| `docker-compose logs -f buyspy-bot` | View logs |
+| `docker-compose restart buyspy-bot` | Restart the bot |
 
 ### Google Cloud Deployment
 

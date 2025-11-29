@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  buyspy-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: buyspy-telegram-bot
+    restart: unless-stopped
+
+    # Environment variables
+    env_file:
+      - .env
+
+    # Volume mounts
+    volumes:
+     - ./.env:/app/.env:ro
+     # Mount from encrypted folder on QNAP
+     - /share/docker-secrets/service-account-key.json:/root/service-account-key.json:ro
+
+
+    # Environment variables for Google Cloud
+    # Environment variables for Google Cloud
+    environment:
+      # Point to the mounted service account key
+      GOOGLE_APPLICATION_CREDENTIALS: /root/service-account-key.json
+
+      # Python environment
+      PYTHONPATH: /app
+      PYTHONUNBUFFERED: 1
+
+      # Override env_file settings if needed
+      # GCP_PROJECT_ID: your-project-id
+      # TELEGRAM_BOT_TOKEN: your-bot-token
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

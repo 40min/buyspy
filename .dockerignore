@@ -1,0 +1,65 @@
+# Version control
+.git
+.gitignore
+.github/
+
+# Development and testing
+tests/
+notebooks/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.ruff_cache/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.pre-commit-config.yaml
+
+# Documentation (except README)
+docs/
+*.md
+!README.md
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Deployment and infrastructure
+deployment/
+terraform.tfstate*
+*.tfvars
+*.tfstate.backup
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Jupyter notebooks (if any are generated)
+.ipynb_checkpoints/
+
+# Lock files (will be copied explicitly if needed)
+uv.lock
