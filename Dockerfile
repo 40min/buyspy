@@ -73,4 +73,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8080
 
 # Run the telegram bot
-CMD ["python", "telegram_bot.py"]
+CMD ["uv", "run", "python", "telegram_bot.py"]
