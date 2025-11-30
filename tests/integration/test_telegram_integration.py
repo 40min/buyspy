@@ -15,7 +15,7 @@
 # mypy: disable-error-code="arg-type,attr-defined,method-assign,union-attr"
 
 import os
-from collections.abc import AsyncIterator, Callable, Generator
+from collections.abc import Callable, Generator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
@@ -24,6 +24,7 @@ from telegram import Chat, Message, Update, User
 from telegram.ext import ContextTypes
 
 from app.agent_engine_app import AgentEngineApp
+from app.services.budget_service import BudgetService
 from app.services.telegram_service import TelegramService
 
 
@@ -133,6 +134,7 @@ def mock_update_factory() -> Callable[[str, int, int], Update]:
         update.message = Mock(spec=Message)
         update.message.text = message_text
         update.message.reply_text = AsyncMock()
+        update.message.reply_markdown_v2 = AsyncMock()
 
         # Mock effective_chat
         update.effective_chat = Mock(spec=Chat)
@@ -167,11 +169,23 @@ def mock_agent_engine(mock_google_apis: dict[str, Any]) -> AgentEngineApp:
 
 
 @pytest.fixture
-def telegram_service(mock_agent_engine: AgentEngineApp) -> TelegramService:
+def mock_budget_service() -> BudgetService:
+    """Create a mock BudgetService for testing."""
+    # Create a mock budget service that always allows messages
+    mock_service = Mock(spec=BudgetService)
+    mock_service.check_and_increment = AsyncMock(return_value=True)
+    return mock_service
+
+
+@pytest.fixture
+def telegram_service(
+    mock_agent_engine: AgentEngineApp, mock_budget_service: BudgetService
+) -> TelegramService:
     """Create a TelegramService instance for testing."""
     return TelegramService(
         bot_token="test-bot-token-456",
         agent_engine=mock_agent_engine,
+        budget_service=mock_budget_service,
     )
 
 
@@ -221,7 +235,7 @@ async def test_end_to_end_message_flow_success(
 
     # Verify agent engine was called with correct parameters
     telegram_service.agent_engine.async_stream_query.assert_called_once_with(
-        message=test_message, user_id=str(user_id)
+        message=test_message, user_id=str(user_id), session_id=str(chat_id)
     )
 
     # Verify typing action was sent
@@ -230,8 +244,11 @@ async def test_end_to_end_message_flow_success(
     )
 
     # Verify response was sent back to user
-    update.message.reply_text.assert_called_once_with(
-        "I can help you with weather information. The current weather is sunny with a temperature of 22°C."
+    update.message.reply_markdown_v2.assert_called_once()
+    call_args = update.message.reply_markdown_v2.call_args[0][0]
+    assert (
+        "I can help you with weather information\\. The current weather is sunny with a temperature of 22°C\\."
+        in call_args
     )
 
 
@@ -288,11 +305,14 @@ async def test_async_message_handling_realistic_scenario(
 
     # Verify the complete response was concatenated correctly
     expected_response = (
-        "I'd be happy to help you plan your shopping! "
+        "I'd be happy to help you plan your shopping\\! "
         "What kind of items are you looking to buy? "
-        "I can suggest stores and help you find the best deals."
+        "I can suggest stores and help you find the best deals\\."
     )
-    update.message.reply_text.assert_called_once_with(expected_response)
+    update.message.reply_markdown_v2.assert_called_once()
+    # Check that the response contains the expected text
+    call_args = update.message.reply_markdown_v2.call_args[0][0]
+    assert expected_response in call_args
 
 
 @pytest.mark.asyncio
@@ -336,7 +356,7 @@ async def test_service_integration_with_agent_engine_app(
 
     # Verify agent engine integration worked correctly
     telegram_service.agent_engine.async_stream_query.assert_called_once_with(
-        message=test_message, user_id=str(user_id)
+        message=test_message, user_id=str(user_id), session_id=str(chat_id)
     )
 
     # Test feedback registration integration
@@ -381,8 +401,11 @@ async def test_error_recovery_and_resilience(
     await telegram_service.handle_message(update, mock_context)
 
     # Verify fallback error message was sent
-    update.message.reply_text.assert_called_once_with(
-        "I apologize, but I couldn't generate a response. Please try again."
+    update.message.reply_markdown_v2.assert_called_once()
+    call_args = update.message.reply_markdown_v2.call_args[0][0]
+    assert (
+        "I apologize, but I couldn't generate a response\\. Please try again\\."
+        in call_args
     )
 
     # Test case 2: Agent engine raises exception
@@ -392,20 +415,18 @@ async def test_error_recovery_and_resilience(
     update = mock_update_factory(test_message, chat_id, user_id)
 
     # Mock agent engine to raise exception
-    async def mock_exception_stream(
-        message: str, user_id: str
-    ) -> AsyncIterator[dict[str, Any]]:
-        raise Exception("Agent engine error")
-
     telegram_service.agent_engine.async_stream_query = Mock(
-        side_effect=mock_exception_stream
+        side_effect=Exception("Agent engine error")
     )
 
     await telegram_service.handle_message(update, mock_context)
 
     # Verify user-friendly error message was sent
-    update.message.reply_text.assert_called_once_with(
-        "I apologize, but I encountered an error processing your message. Please try again in a moment."
+    update.message.reply_markdown_v2.assert_called_once()
+    call_args = update.message.reply_markdown_v2.call_args[0][0]
+    assert (
+        "I encountered an error while processing your request\\. Please try again\\."
+        in call_args
     )
 
 
@@ -563,7 +584,7 @@ async def test_long_message_handling_integration(
         await telegram_service.handle_message(update, mock_context)
 
         # Verify response was sent despite long message
-        update.message.reply_text.assert_called_once()
+        update.message.reply_markdown_v2.assert_called_once()
 
         # Verify logging occurred (incoming message should be logged)
         mock_logger.assert_called()

@@ -216,7 +216,9 @@ class TestTelegramService:
         """Test error handling for agent engine failures."""
 
         # Mock agent engine to raise an exception immediately
-        async def mock_stream_query(*args, **kwargs) -> AsyncIterator[dict[str, Any]]:
+        async def mock_stream_query(
+            *args: Any, **kwargs: Any
+        ) -> AsyncIterator[dict[str, Any]]:
             # Immediately raise an exception
             raise Exception("Agent engine error")
 
