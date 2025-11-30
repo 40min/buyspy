@@ -138,8 +138,8 @@ async def main() -> None:
 
         print_budget_table(budget_data)
 
-        # Close the Redis connection
-        await redis_client.close()
+        # Close the Redis connection using the recommended aclose() method
+        await redis_client.aclose()
 
     except Exception as e:
         print(f"Error: {e}")
