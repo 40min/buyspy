@@ -16,10 +16,12 @@
 
 """Integration tests for budget enforcement in TelegramService."""
 
+from collections.abc import AsyncIterator, Callable
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+import pytest_asyncio
 from telegram import Chat, Message, Update, User
 from telegram.ext import ContextTypes
 
@@ -47,36 +49,40 @@ class AsyncGeneratorMock:
             raise StopAsyncIteration
 
 
-@pytest.fixture
-async def redis_client():
+@pytest_asyncio.fixture
+async def redis_client() -> AsyncIterator[Mock]:
     """Provide a Redis client for testing."""
-    import fakeredis
+    client = Mock()
+    # Make async methods return AsyncMock
+    client.incr = AsyncMock()
+    client.expire = AsyncMock()
+    client.delete = AsyncMock()
+    client.get = AsyncMock()
+    client.ttl = AsyncMock()
+    client.flushall = AsyncMock()
+    yield client
 
-    # Create a fake Redis instance
-    redis_client = fakeredis.FakeRedis()
-    yield redis_client
-    # Clean up all keys after test
-    await redis_client.flushall()
 
-
-@pytest.fixture
-async def budget_service(redis_client):
+@pytest_asyncio.fixture
+async def budget_service(redis_client: Any) -> AsyncIterator[BudgetService]:
     """Provide a BudgetService instance for testing."""
     service = BudgetService(
         redis_client=redis_client,
         limit=3,  # Small limit for testing
         ttl=86400,
-        whitelist=["whitelisted_user"],
+        whitelist=["99999"],  # whitelisted_user ID as string
     )
     yield service
 
 
-@pytest.fixture
-async def telegram_service(budget_service):
+@pytest_asyncio.fixture
+async def telegram_service(
+    budget_service: BudgetService,
+) -> AsyncIterator[TelegramService]:
     """Provide a TelegramService instance for testing."""
     # Mock the agent engine
     mock_agent_engine = Mock(spec=AgentEngineApp)
-    mock_agent_engine.logger = MagicMock()
+    mock_agent_engine.logger = Mock()
     mock_agent_engine.register_feedback = Mock()
 
     service = TelegramService(
@@ -88,7 +94,7 @@ async def telegram_service(budget_service):
 
 
 @pytest.fixture
-def mock_update_factory():
+def mock_update_factory() -> Callable[[str, int, int], Update]:
     """Factory to create mock Telegram Update objects."""
 
     def _create_update(message_text: str, chat_id: int, user_id: int) -> Update:
@@ -114,7 +120,7 @@ def mock_update_factory():
 
 
 @pytest.fixture
-def mock_context():
+def mock_context() -> Any:
     """Create a mock context object."""
     context = Mock(spec=ContextTypes.DEFAULT_TYPE)
     context.bot = Mock()
@@ -125,8 +131,9 @@ def mock_context():
 @pytest.mark.asyncio
 async def test_message_processed_under_limit(
     telegram_service: TelegramService,
-    mock_update_factory,
-    mock_context,
+    redis_client: Mock,
+    mock_update_factory: Callable[[str, int, int], Update],
+    mock_context: Any,
 ) -> None:
     """
     Test that messages are processed when user is under the budget limit.
@@ -134,6 +141,10 @@ async def test_message_processed_under_limit(
     Verifies that messages under the limit are processed normally,
     budget counter increments, and agent engine is called.
     """
+    # Setup Redis mocks
+    redis_client.incr.return_value = 1
+    redis_client.get.return_value = "1"
+
     # Create test message
     test_message = "What is the weather like today?"
     chat_id = 12345
@@ -175,8 +186,9 @@ async def test_message_processed_under_limit(
 @pytest.mark.asyncio
 async def test_message_rejected_over_limit(
     telegram_service: TelegramService,
-    mock_update_factory,
-    mock_context,
+    redis_client: Mock,
+    mock_update_factory: Callable[[str, int, int], Update],
+    mock_context: Any,
 ) -> None:
     """
     Test that messages are rejected when user exceeds the budget limit.
@@ -187,18 +199,25 @@ async def test_message_rejected_over_limit(
     chat_id = 12345
     user_id = 67890
 
+    # Setup Redis to return incrementing values
+    redis_client.incr.side_effect = [1, 2, 3, 4]  # 4th call will be over limit
+
     # Send messages up to the limit (3 messages)
-    for i in range(3):
-        update = mock_update_factory(f"Message {i+1}", chat_id, user_id)
+    mock_generators = []
+    for i in range(4):  # 3 valid + 1 over limit
         mock_events = [
             {
                 "author": "assistant",
-                "content": {"parts": [{"text": f"Response {i+1}"}]},
+                "content": {"parts": [{"text": f"Response {i + 1}"}]},
             }
         ]
-        telegram_service.agent_engine.async_stream_query = Mock(
-            return_value=AsyncGeneratorMock(mock_events)
-        )
+        mock_generators.append(AsyncGeneratorMock(mock_events))
+
+    telegram_service.agent_engine.async_stream_query.side_effect = mock_generators
+
+    for i in range(3):
+        redis_client.get.return_value = str(i + 1)
+        update = mock_update_factory(f"Message {i + 1}", chat_id, user_id)
         await telegram_service.handle_message(update, mock_context)
 
     # Verify counter is at limit
@@ -206,6 +225,8 @@ async def test_message_rejected_over_limit(
     assert count == 3
 
     # Now send one more message (should be rejected)
+    redis_client.incr.return_value = 4  # Over limit
+    redis_client.get.return_value = "3"  # Still at limit
     update = mock_update_factory("This should be rejected", chat_id, user_id)
     await telegram_service.handle_message(update, mock_context)
 
@@ -230,8 +251,9 @@ async def test_message_rejected_over_limit(
 @pytest.mark.asyncio
 async def test_whitelisted_user_bypasses_limit(
     telegram_service: TelegramService,
-    mock_update_factory,
-    mock_context,
+    redis_client: Mock,
+    mock_update_factory: Callable[[str, int, int], Update],
+    mock_context: Any,
 ) -> None:
     """
     Test that whitelisted users bypass the budget limit.
@@ -243,35 +265,43 @@ async def test_whitelisted_user_bypasses_limit(
     user_id = 99999  # whitelisted_user from fixture
 
     # Send many messages (way over the limit)
+    mock_generators = []
     for i in range(10):
-        update = mock_update_factory(f"Message {i+1}", chat_id, user_id)
         mock_events = [
             {
                 "author": "assistant",
-                "content": {"parts": [{"text": f"Response {i+1}"}]},
+                "content": {"parts": [{"text": f"Response {i + 1}"}]},
             }
         ]
-        telegram_service.agent_engine.async_stream_query = Mock(
-            return_value=AsyncGeneratorMock(mock_events)
-        )
+        mock_generators.append(AsyncGeneratorMock(mock_events))
+
+    telegram_service.agent_engine.async_stream_query.side_effect = mock_generators
+
+    for i in range(10):
+        update = mock_update_factory(f"Message {i + 1}", chat_id, user_id)
         await telegram_service.handle_message(update, mock_context)
 
     # Verify all messages were processed (agent engine called 10 times)
     assert telegram_service.agent_engine.async_stream_query.call_count == 10
 
     # Verify budget counter was not incremented (should be 0 for whitelisted)
+    redis_client.get.return_value = None  # No key exists for whitelisted users
     count = await telegram_service.budget_service.get_user_budget_count(str(user_id))
     assert count == 0
 
     # Verify typing actions were sent for all messages
     assert mock_context.bot.send_chat_action.call_count == 10
 
+    # Verify Redis incr was never called for whitelisted user (they bypass budget checks)
+    redis_client.incr.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_budget_counter_increments_correctly(
     telegram_service: TelegramService,
-    mock_update_factory,
-    mock_context,
+    redis_client: Mock,
+    mock_update_factory: Callable[[str, int, int], Update],
+    mock_context: Any,
 ) -> None:
     """
     Test that the budget counter increments correctly with each message.
@@ -283,10 +313,13 @@ async def test_budget_counter_increments_correctly(
     user_id = 67890
 
     # Initially should be 0
+    redis_client.get.return_value = None
     count = await telegram_service.budget_service.get_user_budget_count(str(user_id))
     assert count == 0
 
     # Send first message
+    redis_client.incr.return_value = 1
+    redis_client.get.return_value = "1"
     update = mock_update_factory("First message", chat_id, user_id)
     mock_events = [
         {
@@ -303,6 +336,8 @@ async def test_budget_counter_increments_correctly(
     assert count == 1
 
     # Send second message
+    redis_client.incr.return_value = 2
+    redis_client.get.return_value = "2"
     update = mock_update_factory("Second message", chat_id, user_id)
     mock_events = [
         {
@@ -319,6 +354,8 @@ async def test_budget_counter_increments_correctly(
     assert count == 2
 
     # Send third message
+    redis_client.incr.return_value = 3
+    redis_client.get.return_value = "3"
     update = mock_update_factory("Third message", chat_id, user_id)
     mock_events = [
         {
@@ -338,8 +375,9 @@ async def test_budget_counter_increments_correctly(
 @pytest.mark.asyncio
 async def test_ttl_set_on_first_message(
     telegram_service: TelegramService,
-    mock_update_factory,
-    mock_context,
+    redis_client: Mock,
+    mock_update_factory: Callable[[str, int, int], Update],
+    mock_context: Any,
 ) -> None:
     """
     Test that TTL is set on the Redis key when the first message is sent.
@@ -350,9 +388,10 @@ async def test_ttl_set_on_first_message(
     chat_id = 12345
     user_id = 67890
 
-    # Before any messages, key should not exist or have no TTL
-    redis_client = telegram_service.budget_service.redis_client
-    key = f"budget:{user_id}"
+    # Setup Redis mocks
+    redis_client.incr.return_value = 1
+    redis_client.ttl.return_value = 86400  # Mock TTL value
+    redis_client.get.return_value = "1"
 
     # Send first message
     update = mock_update_factory("First message", chat_id, user_id)
@@ -368,10 +407,14 @@ async def test_ttl_set_on_first_message(
     await telegram_service.handle_message(update, mock_context)
 
     # Check that TTL is set (should be close to 86400 seconds)
+    key = f"budget:{user_id}"
     ttl = await redis_client.ttl(key)
     assert 86300 <= ttl <= 86400  # Allow some margin for test execution time
 
     # Send second message
+    redis_client.incr.return_value = 2
+    redis_client.ttl.return_value = 86300  # Slightly decreased
+    redis_client.get.return_value = "2"
     update = mock_update_factory("Second message", chat_id, user_id)
     mock_events = [
         {
@@ -396,8 +439,9 @@ async def test_ttl_set_on_first_message(
 @pytest.mark.asyncio
 async def test_budget_reset_functionality(
     telegram_service: TelegramService,
-    mock_update_factory,
-    mock_context,
+    redis_client: Mock,
+    mock_update_factory: Callable[[str, int, int], Update],
+    mock_context: Any,
 ) -> None:
     """
     Test that budget can be reset and new messages work after reset.
@@ -409,11 +453,14 @@ async def test_budget_reset_functionality(
 
     # Send a couple messages to increment counter
     for i in range(2):
-        update = mock_update_factory(f"Message {i+1}", chat_id, user_id)
+        redis_client.incr.return_value = i + 1
+        redis_client.get.return_value = str(i + 1)
+
+        update = mock_update_factory(f"Message {i + 1}", chat_id, user_id)
         mock_events = [
             {
                 "author": "assistant",
-                "content": {"parts": [{"text": f"Response {i+1}"}]},
+                "content": {"parts": [{"text": f"Response {i + 1}"}]},
             }
         ]
         telegram_service.agent_engine.async_stream_query = Mock(
@@ -426,14 +473,18 @@ async def test_budget_reset_functionality(
     assert count == 2
 
     # Reset budget
+    redis_client.delete.return_value = 1
     reset_result = await telegram_service.budget_service.reset_user_budget(str(user_id))
     assert reset_result is True
 
     # Verify counter is reset to 0
+    redis_client.get.return_value = None
     count = await telegram_service.budget_service.get_user_budget_count(str(user_id))
     assert count == 0
 
     # Send another message - should work
+    redis_client.incr.return_value = 1
+    redis_client.get.return_value = "1"
     update = mock_update_factory("After reset message", chat_id, user_id)
     mock_events = [
         {
@@ -457,8 +508,9 @@ async def test_budget_reset_functionality(
 @pytest.mark.asyncio
 async def test_redis_connection_failure_fails_open(
     telegram_service: TelegramService,
-    mock_update_factory,
-    mock_context,
+    redis_client: Mock,
+    mock_update_factory: Callable[[str, int, int], Update],
+    mock_context: Any,
 ) -> None:
     """
     Test that Redis connection failures cause fail-open behavior.
@@ -470,34 +522,25 @@ async def test_redis_connection_failure_fails_open(
     user_id = 67890
 
     # Mock Redis to raise exceptions
-    original_incr = telegram_service.budget_service.redis_client.incr
-    telegram_service.budget_service.redis_client.incr = AsyncMock(
-        side_effect=Exception("Redis connection failed")
+    redis_client.incr.side_effect = Exception("Redis connection failed")
+
+    # Send message - should still be processed due to fail-open
+    update = mock_update_factory("Test message", chat_id, user_id)
+    mock_events = [
+        {
+            "author": "assistant",
+            "content": {"parts": [{"text": "Test response"}]},
+        }
+    ]
+    telegram_service.agent_engine.async_stream_query = Mock(
+        return_value=AsyncGeneratorMock(mock_events)
+    )
+    await telegram_service.handle_message(update, mock_context)
+
+    # Verify message was processed despite Redis failure
+    telegram_service.agent_engine.async_stream_query.assert_called_once_with(
+        message="Test message", user_id=str(user_id), session_id=str(chat_id)
     )
 
-    try:
-        # Send message - should still be processed due to fail-open
-        update = mock_update_factory("Test message", chat_id, user_id)
-        mock_events = [
-            {
-                "author": "assistant",
-                "content": {"parts": [{"text": "Test response"}]},
-            }
-        ]
-        telegram_service.agent_engine.async_stream_query = Mock(
-            return_value=AsyncGeneratorMock(mock_events)
-        )
-        await telegram_service.handle_message(update, mock_context)
-
-        # Verify message was processed despite Redis failure
-        telegram_service.agent_engine.async_stream_query.assert_called_once_with(
-            message="Test message", user_id=str(user_id), session_id=str(chat_id)
-        )
-
-        # Verify response was sent
-        update.message.reply_markdown_v2.assert_called_once()
-
-    finally:
-        # Restore original Redis client method
-
-        telegram_service.budget_service.redis_client.incr = original_incr
+    # Verify response was sent
+    update.message.reply_markdown_v2.assert_called_once()

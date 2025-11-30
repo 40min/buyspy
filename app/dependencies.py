@@ -45,7 +45,7 @@ def get_agent_engine() -> AgentEngineApp:
     return _get_agent_engine()
 
 
-async def get_redis_client() -> redis_asyncio.Redis:
+def get_redis_client() -> redis_asyncio.Redis:
     """
     Get Redis client instance.
 
@@ -60,7 +60,7 @@ async def get_redis_client() -> redis_asyncio.Redis:
     )
 
 
-async def get_budget_service() -> BudgetService:
+def get_budget_service() -> BudgetService:
     """
     Get BudgetService instance.
 
@@ -68,7 +68,7 @@ async def get_budget_service() -> BudgetService:
         BudgetService: Budget service configured from settings
     """
     config = get_config()
-    redis_client = await get_redis_client()
+    redis_client = get_redis_client()
     # Parse comma-separated whitelist into list
     whitelisted_users = [
         user.strip() for user in config.whitelisted_users.split(",") if user.strip()
@@ -82,7 +82,7 @@ async def get_budget_service() -> BudgetService:
     )
 
 
-async def get_telegram_service() -> TelegramService:
+def get_telegram_service() -> TelegramService:
     """
     Create and return TelegramService instance.
 
@@ -96,7 +96,7 @@ async def get_telegram_service() -> TelegramService:
     """
     config = get_config()
     engine = get_agent_engine()
-    budget_service = await get_budget_service()
+    budget_service = get_budget_service()
 
     return TelegramService(
         bot_token=config.telegram_bot_token,
