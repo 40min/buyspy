@@ -1,10 +1,47 @@
 services:
+  redis:
+    image: redis:alpine
+    container_name: buyspy-redis
+    restart: unless-stopped
+
+    # Port mapping for local development
+    ports:
+      - "6379:6379"
+
+    # Health check using redis-cli ping
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+    # Logging (same as buyspy-bot service)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   buyspy-bot:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: buyspy-telegram-bot
     restart: unless-stopped
+
+    # Service dependencies
+    depends_on:
+      redis:
+        condition: service_healthy
 
     # Environment variables
     env_file:

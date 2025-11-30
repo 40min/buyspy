@@ -42,6 +42,17 @@ class Settings(BaseSettings):
     artifacts_bucket_name: str | None = None
     log_level: str = "INFO"
 
+    # Redis settings for daily budget feature
+    redis_host: str = "redis"
+    redis_port: int = 6379
+
+    # Daily budget limits
+    message_limit: int = 30  # Maximum messages per time window
+    message_limit_ttl: int = 86400  # Time window in seconds (24 hours)
+    whitelisted_users: str = (
+        ""  # Comma-separated list of whitelisted Telegram usernames
+    )
+
     @model_validator(mode="after")
     def validate_required_fields(self) -> "Settings":
         """Validate that required fields are not empty strings."""
