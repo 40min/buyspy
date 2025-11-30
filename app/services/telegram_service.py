@@ -18,23 +18,30 @@ from app.app_utils.telegram_markdown import (
     convert_urls_to_links,
     escape_markdown_v2,
 )
+from app.services.budget_service import BudgetService
 
 
 class TelegramService:
     """Service for handling Telegram bot message routing to the agent engine."""
 
     def __init__(
-        self, bot_token: str, agent_engine: AgentEngineApp, timeout_seconds: int = 600
+        self,
+        bot_token: str,
+        agent_engine: AgentEngineApp,
+        budget_service: BudgetService,
+        timeout_seconds: int = 600,
     ):
         """Initialize the Telegram service with bot token and agent engine instance.
 
         Args:
             bot_token: Telegram bot token
             agent_engine: Agent engine instance
+            budget_service: Budget service for rate limiting
             timeout_seconds: Timeout for agent processing in seconds (default: 600 = 10 minutes)
         """
         self.agent_engine = agent_engine
         self.bot_token = bot_token
+        self.budget_service = budget_service
         self.timeout_seconds = timeout_seconds
         self.logger = logging.getLogger(__name__)
         self.application: Application | None = None
@@ -60,6 +67,15 @@ class TelegramService:
                 self.logger.warning("Message has no text")
                 return
             chat_id = update.effective_chat.id
+            user_id = str(update.effective_user.id)
+
+            # Check user budget before processing message
+            if not await self.budget_service.check_and_increment(user_id):
+                self.logger.warning(f"User {user_id} exceeded message budget")
+                await update.message.reply_text(
+                    "⚠️ You've reached your daily message limit. Please try again in 24 hours."
+                )
+                return
 
             # Log the incoming message
             self.logger.info(
