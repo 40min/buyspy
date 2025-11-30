@@ -70,10 +70,19 @@ class TelegramService:
             user_id = str(update.effective_user.id)
 
             # Check user budget before processing message
-            if not await self.budget_service.check_and_increment(user_id):
-                self.logger.warning(f"User {user_id} exceeded message budget")
+            try:
+                if not await self.budget_service.check_and_increment(user_id):
+                    self.logger.warning(f"User {user_id} exceeded message budget")
+                    await update.message.reply_text(
+                        "⚠️ You've reached your daily message limit. Please try again in 24 hours."
+                    )
+                    return
+            except Exception as budget_error:
+                self.logger.error(
+                    f"Budget service unavailable for user {user_id}: {budget_error}"
+                )
                 await update.message.reply_text(
-                    "⚠️ You've reached your daily message limit. Please try again in 24 hours."
+                    "Service temporarily unavailable. Please try again later."
                 )
                 return
 

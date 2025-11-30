@@ -506,17 +506,17 @@ async def test_budget_reset_functionality(
 
 
 @pytest.mark.asyncio
-async def test_redis_connection_failure_fails_open(
+async def test_redis_connection_failure_fails_closed(
     telegram_service: TelegramService,
     redis_client: Mock,
     mock_update_factory: Callable[[str, int, int], Update],
     mock_context: Any,
 ) -> None:
     """
-    Test that Redis connection failures cause fail-open behavior.
+    Test that Redis connection failures cause fail-closed behavior.
 
-    Verifies that when Redis is unavailable, messages are still processed
-    (fail-open behavior for budget checks).
+    Verifies that when Redis is unavailable, messages are rejected
+    (fail-closed behavior for budget checks).
     """
     chat_id = 12345
     user_id = 67890
@@ -524,23 +524,17 @@ async def test_redis_connection_failure_fails_open(
     # Mock Redis to raise exceptions
     redis_client.incr.side_effect = Exception("Redis connection failed")
 
-    # Send message - should still be processed due to fail-open
+    # Send message - should be rejected due to Redis failure
     update = mock_update_factory("Test message", chat_id, user_id)
-    mock_events = [
-        {
-            "author": "assistant",
-            "content": {"parts": [{"text": "Test response"}]},
-        }
-    ]
-    telegram_service.agent_engine.async_stream_query = Mock(
-        return_value=AsyncGeneratorMock(mock_events)
-    )
     await telegram_service.handle_message(update, mock_context)
 
-    # Verify message was processed despite Redis failure
-    telegram_service.agent_engine.async_stream_query.assert_called_once_with(
-        message="Test message", user_id=str(user_id), session_id=str(chat_id)
+    # Verify message was NOT processed due to Redis failure
+    telegram_service.agent_engine.async_stream_query.assert_not_called()
+
+    # Verify service unavailable message was sent
+    update.message.reply_text.assert_called_once_with(
+        "Service temporarily unavailable. Please try again later."
     )
 
-    # Verify response was sent
-    update.message.reply_markdown_v2.assert_called_once()
+    # Verify no typing action was sent
+    mock_context.bot.send_chat_action.assert_not_called()

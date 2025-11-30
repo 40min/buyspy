@@ -48,47 +48,37 @@ class BudgetService:
 
         Returns:
             True if the user has budget remaining (or is whitelisted), False otherwise
+
+        Raises:
+            Exception: If Redis operations fail, propagates the error
         """
-        try:
-            # Check whitelist first - whitelisted users bypass limits
-            if str(user_id) in self.whitelist:
-                self.logger.info(
-                    f"User {user_id} is whitelisted - bypassing budget check"
-                )
-                return True
-
-            # Redis key format for budget tracking
-            budget_key = f"budget:{user_id}"
-
-            # Atomic INCR operation using aioredis
-            current_count = await self.redis_client.incr(budget_key)
-
-            # If this is the first increment (count == 1), set the TTL
-            if current_count == 1:
-                await self.redis_client.expire(budget_key, self.ttl)
-                self.logger.debug(
-                    f"Set TTL for budget key {budget_key}: {self.ttl} seconds"
-                )
-
-            # Check if within limit
-            if current_count <= self.limit:
-                self.logger.debug(
-                    f"User {user_id} budget OK: {current_count}/{self.limit}"
-                )
-                return True
-            else:
-                self.logger.warning(
-                    f"User {user_id} exceeded budget: {current_count}/{self.limit}"
-                )
-                return False
-
-        except Exception as e:
-            # Fail-open approach: allow the message if there's any error
-            self.logger.error(
-                f"Error checking budget for user {user_id}: {e}", exc_info=True
-            )
-            self.logger.warning(f"Failing open - allowing message from user {user_id}")
+        # Check whitelist first - whitelisted users bypass limits
+        if str(user_id) in self.whitelist:
+            self.logger.info(f"User {user_id} is whitelisted - bypassing budget check")
             return True
+
+        # Redis key format for budget tracking
+        budget_key = f"budget:{user_id}"
+
+        # Atomic INCR operation using aioredis
+        current_count = await self.redis_client.incr(budget_key)
+
+        # If this is the first increment (count == 1), set the TTL
+        if current_count == 1:
+            await self.redis_client.expire(budget_key, self.ttl)
+            self.logger.debug(
+                f"Set TTL for budget key {budget_key}: {self.ttl} seconds"
+            )
+
+        # Check if within limit
+        if current_count <= self.limit:
+            self.logger.debug(f"User {user_id} budget OK: {current_count}/{self.limit}")
+            return True
+        else:
+            self.logger.warning(
+                f"User {user_id} exceeded budget: {current_count}/{self.limit}"
+            )
+            return False
 
     async def reset_user_budget(self, user_id: str) -> bool:
         """Reset a user's budget counter (useful for testing or admin operations).

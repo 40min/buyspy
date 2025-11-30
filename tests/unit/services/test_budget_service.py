@@ -93,15 +93,14 @@ class TestBudgetService:
         mock_redis_client.expire.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_check_and_increment_error_fails_open(
+    async def test_check_and_increment_error_raises_exception(
         self, budget_service: BudgetService, mock_redis_client: Mock
     ) -> None:
-        """Test that errors cause fail-open behavior."""
+        """Test that errors raise exceptions instead of failing open."""
         mock_redis_client.incr.side_effect = Exception("Redis error")
 
-        result = await budget_service.check_and_increment("user123")
-
-        assert result is True
+        with pytest.raises(Exception, match="Redis error"):
+            await budget_service.check_and_increment("user123")
 
     @pytest.mark.asyncio
     async def test_reset_user_budget_success(
