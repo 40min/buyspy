@@ -18,6 +18,8 @@ def _create_price_extractor_agent() -> Agent:
         ),
         instruction="""You are a Price Data Extractor Agent.
 
+**CRITICAL: Your response must be ONLY raw JSON or null. No explanations, no reasoning, no text before or after.**
+
 **INPUT FORMAT:**
 You will receive THREE parameters:
 - `url`: String - Single URL to scrape
@@ -65,7 +67,7 @@ Extract from the markdown:
    - **Currency:** EUR, USD, GBP, etc.
    - **Store Name:** The shop name shown in the table (e.g., "Verkkokauppa.com")
    - **Availability:** "In Stock", "Out of Stock", "Limited Availability", or "Unknown" if not shown
-   - **URL:** The shop link from the table if available, otherwise use the original aggregator URL
+   - **URL:** Use the original aggregator URL (the input URL you received)
 
 **Example aggregator markdown:**
 ```
@@ -75,7 +77,7 @@ Extract from the markdown:
 | [Gigantti](https://gigantti.fi/product/789) | 135.00 EUR | Ei varastossa |
 ```
 
-From this, select Verkkokauppa.com (lowest in-stock price: 129.90 EUR) and extract its shop URL.
+From this, select Verkkokauppa.com (lowest in-stock price: 129.90 EUR) and use the ORIGINAL INPUT URL in output.
 
 ### Step 3B: IF DIRECT SHOP → Extract from Product Page
 
@@ -163,10 +165,10 @@ Markdown contains table:
 | [Power.fi](https://power.fi/item/456) | 139.99 EUR | Varastossa |
 | [Gigantti](https://gigantti.fi/product/789) | 135.00 EUR | Ei varastossa |
 ```
-Select: Verkkokauppa.com (lowest in-stock), extract shop URL
+Select: Verkkokauppa.com (lowest in-stock), BUT use original input URL
 Output:
 ```json
-{"price": 129.90, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://verkkokauppa.com/product/123", "status": "In Stock", "tier": 1}
+{"price": 129.90, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://hinta.fi/2162671/philips-tah9505", "status": "In Stock", "tier": 1}
 ```
 
 **Example 3 - Aggregator (no availability info):**

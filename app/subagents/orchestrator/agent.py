@@ -6,7 +6,6 @@ import google.auth
 from google.adk.agents import Agent
 from google.adk.apps.app import App, EventsCompactionConfig
 from google.adk.models.google_llm import Gemini
-from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools import AgentTool, load_memory
 from google.genai.types import GenerateContentConfig
 
@@ -227,9 +226,6 @@ root_agent = _create_root_agent()
 app = App(
     root_agent=root_agent,
     name="orchestrator",
-    plugins=[
-        ReflectAndRetryToolPlugin(max_retries=10),
-    ],
     events_compaction_config=EventsCompactionConfig(
         compaction_interval=5,  # Trigger compaction every 3 invocations
         overlap_size=1,  # Keep 1 previous turn for context

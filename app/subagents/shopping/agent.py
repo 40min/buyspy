@@ -1,7 +1,6 @@
 from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.models.google_llm import Gemini
-from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools import AgentTool
 from google.genai.types import GenerateContentConfig
 
@@ -147,7 +146,4 @@ shopping_agent = _create_shopping_agent(price_extractor_agent)
 app = App(
     root_agent=shopping_agent,
     name="shopping",
-    plugins=[
-        ReflectAndRetryToolPlugin(max_retries=10),
-    ],
 )

@@ -1,7 +1,6 @@
 from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.models.google_llm import Gemini
-from google.adk.plugins import ReflectAndRetryToolPlugin
 from google.adk.tools.google_search_tool import google_search
 from google.genai.types import GenerateContentConfig
 
@@ -62,7 +61,4 @@ smalltalk_agent = _create_smalltalk_agent()
 app = App(
     root_agent=smalltalk_agent,
     name="smalltalk",
-    plugins=[
-        ReflectAndRetryToolPlugin(max_retries=10),
-    ],
 )
