@@ -41,6 +41,13 @@ class TestTelegramService:
         return Mock(spec=AgentEngineApp)
 
     @pytest.fixture
+    def mock_budget_service(self) -> Mock:
+        """Create a mock budget service."""
+        budget_service = Mock()
+        budget_service.check_and_increment = AsyncMock(return_value=True)
+        return budget_service
+
+    @pytest.fixture
     def mock_update(self) -> Mock:
         """Create a mock Telegram Update object."""
         update = Mock(spec=Update)
@@ -70,10 +77,14 @@ class TestTelegramService:
         return context
 
     @pytest.fixture
-    def telegram_service(self, mock_agent_engine: Mock) -> TelegramService:
+    def telegram_service(
+        self, mock_agent_engine: Mock, mock_budget_service: Mock
+    ) -> TelegramService:
         """Create a TelegramService instance for testing."""
         return TelegramService(
-            bot_token="test_bot_token", agent_engine=mock_agent_engine
+            bot_token="test_bot_token",
+            agent_engine=mock_agent_engine,
+            budget_service=mock_budget_service,
         )
 
     def test_initialization(
