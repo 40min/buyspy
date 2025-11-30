@@ -1,18 +1,28 @@
 # ==============================================================================
+# Help
+# ==============================================================================
+
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# ==============================================================================
 # Installation & Setup
 # ==============================================================================
 
 # Install dependencies using uv package manager
-install:
+install: ## Install dependencies using uv package manager
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh; source $HOME/.local/bin/env; }
-	uv sync
+	uv sync --group dev --extra lint
 
 # ==============================================================================
 # Playground Targets
 # ==============================================================================
 
 # Launch local dev playground
-playground:
+playground: ## Launch local dev playground
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
@@ -23,7 +33,7 @@ playground:
 	uv run adk web app/subagents --port 8501 --reload_agents --log_level DEBUG
 
 # Run the Telegram bot
-run-bot:
+run-bot: ## Run the Telegram bot
 	uv run python telegram_bot.py
 
 # ==============================================================================
@@ -31,7 +41,7 @@ run-bot:
 # ==============================================================================
 
 # Deploy the agent remotely
-deploy:
+deploy: ## Deploy the agent remotely
 	# Export dependencies to requirements file using uv export.
 	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > app/app_utils/.requirements.txt 2>/dev/null || \
 	uv export --no-hashes --no-header --no-dev --no-emit-project > app/app_utils/.requirements.txt) && \
@@ -42,7 +52,7 @@ deploy:
 		--requirements-file=app/app_utils/.requirements.txt
 
 # Alias for 'make deploy' for backward compatibility
-backend: deploy
+backend: deploy ## Alias for 'make deploy' for backward compatibility
 
 
 # ==============================================================================
@@ -50,7 +60,7 @@ backend: deploy
 # ==============================================================================
 
 # Set up development environment resources using Terraform
-setup-dev-env:
+setup-dev-env: ## Set up development environment resources using Terraform
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
 
@@ -59,17 +69,34 @@ setup-dev-env:
 # ==============================================================================
 
 # Run unit and integration tests
-test:
-	uv sync --dev
+test: ## Run unit and integration tests
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)
-lint:
-	uv sync --dev --extra lint
+lint: ## Run code quality checks (codespell, ruff, mypy)
 	uv run codespell
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
-	uv run mypy .
+	uvx mypy .
+
+# Run code quality checks with auto-fixing
+lint-fix: ## Run code quality checks with auto-fixing
+	uv run codespell --write-changes .
+	uv run ruff check --fix .
+	uv run ruff format .
+	uvx mypy .
+
+# ==============================================================================
+# Budget Management Targets
+# ==============================================================================
+
+# Check budget status for all users (local)
+budget-status:  ## Check budget status for all users (local)
+	uv run python scripts/check_budget.py
+
+# Check budget status for all users (via docker)
+budget-status-container:  ## Check budget status for all users (via docker)
+	docker compose exec buyspy-bot python scripts/check_budget.py
 
 # ==============================================================================
 # Gemini Enterprise Integration
@@ -78,5 +105,5 @@ lint:
 # Register the deployed agent to Gemini Enterprise
 # Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
 # Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
-register-gemini-enterprise:
+register-gemini-enterprise: ## Register the deployed agent to Gemini Enterprise
 	uvx agent-starter-pack@0.20.4 register-gemini-enterprise

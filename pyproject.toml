@@ -16,6 +16,7 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "python-dotenv>=1.0.0",
     "telegramify-markdown>=0.5.2",
+    "redis>=4.2.0",
 ]
 
 requires-python = ">=3.10,<3.13"
@@ -26,6 +27,8 @@ dev = [
     "pytest-asyncio>=0.23.8,<1.0.0",
     "nest-asyncio>=1.6.0,<2.0.0",
     "pre-commit>=4.4.0",
+    "fakeredis>=2.21.0,<3.0.0",
+    "mypy>=1.18.2",
 ]
 
 [project.optional-dependencies]
@@ -80,7 +83,7 @@ disable_error_code = ["misc", "no-untyped-call", "no-any-return"]
 exclude = [".venv"]
 
 [tool.codespell]
-ignore-words-list = "rouge"
+ignore-words-list = "rouge,anc"
 skip = "./locust_env/*,uv.lock,.venv,./frontend,**/*.ipynb"
 
 
