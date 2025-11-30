@@ -6,7 +6,7 @@ following proper dependency injection patterns. Each function returns
 a single entity, making it easy to inject dependencies where needed.
 """
 
-import aioredis
+from redis import asyncio as redis_asyncio
 
 from app.agent_engine_app import AgentEngineApp
 from app.agent_engine_app import get_agent_engine as _get_agent_engine
@@ -45,15 +45,15 @@ def get_agent_engine() -> AgentEngineApp:
     return _get_agent_engine()
 
 
-async def get_redis_client() -> aioredis.Redis:
+async def get_redis_client() -> redis_asyncio.Redis:
     """
     Get Redis client instance.
 
     Returns:
-        aioredis.Redis: Redis client configured from settings
+        redis_asyncio.Redis: Redis client configured from settings
     """
     config = get_config()
-    return await aioredis.Redis(
+    return redis_asyncio.Redis(
         host=config.redis_host,
         port=config.redis_port,
         decode_responses=True,

@@ -72,6 +72,18 @@ lint:
 	uv run mypy .
 
 # ==============================================================================
+# Budget Management Targets
+# ==============================================================================
+
+# Check budget status for all users (local)
+budget-status:  ## Check budget status for all users (local)
+	uv run python scripts/check_budget.py
+
+# Check budget status for all users (via docker)
+budget-status-container:  ## Check budget status for all users (via docker)
+	docker compose exec buyspy-bot python scripts/check_budget.py
+
+# ==============================================================================
 # Gemini Enterprise Integration
 # ==============================================================================
 
