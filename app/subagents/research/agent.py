@@ -5,8 +5,14 @@ from google.adk.apps.app import App
 from google.adk.models.google_llm import Gemini
 from google.adk.tools.google_search_tool import google_search
 from google.genai.types import GenerateContentConfig
+from pydantic import BaseModel, Field
 
 from app.subagents.config import default_retry_config
+
+
+class ResearchResult(BaseModel):
+    model: str = Field(..., description="Product model name")
+    reason: str = Field(..., description="Reason for recommendation")
 
 
 def _create_research_agent(current_year: str) -> Agent:
@@ -16,6 +22,8 @@ def _create_research_agent(current_year: str) -> Agent:
         tools=[google_search],
         generate_content_config=GenerateContentConfig(
             temperature=0.1,
+            response_mime_type="application/json",
+            response_json_schema=ResearchResult.model_json_schema(),
         ),
         instruction=f"""You are a Regional Product Research Specialist.
 
@@ -31,17 +39,8 @@ Use {current_year} as default year if not specified.
 ### OUTPUT
 Return ONLY valid JSON (no extra text):
 
-```json
-[
-  {{
-    "model": "Exact Model Name",
-    "reason": "Why it's recommended"
-  }}
-]
-```
-
 Example:
-```json
+```
 [
   {{
     "model": "iPhone 15 Pro",

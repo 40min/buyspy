@@ -2,9 +2,22 @@ from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.models.google_llm import Gemini
 from google.genai.types import GenerateContentConfig
+from pydantic import BaseModel, Field
 
 from app.subagents.config import default_retry_config
 from app.tools.search_tools_bd import brightdata_toolset
+
+
+# {"price": 99.99, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://original-input-url.com", "status": "In Stock", "tier": 1}
+class PriceData(BaseModel):
+    price: float = Field(..., description="Product price")
+    currency: str = Field(..., description="Currency code (e.g., EUR, USD)")
+    store: str = Field(..., description="Store name")
+    url: str = Field(..., description="Original URL")
+    status: str = Field(
+        ..., description="Availability status (In Stock, Out of Stock, etc.)"
+    )
+    tier: int = Field(..., description="Priority tier (1, 2, or 3)")
 
 
 def _create_price_extractor_agent() -> Agent:
@@ -15,6 +28,8 @@ def _create_price_extractor_agent() -> Agent:
         tools=[brightdata_toolset],
         generate_content_config=GenerateContentConfig(
             temperature=0.1,
+            response_mime_type="application/json",
+            response_json_schema=PriceData.model_json_schema(),
         ),
         instruction="""You are a Price Data Extractor Agent.
 

@@ -3,10 +3,27 @@ from google.adk.apps.app import App
 from google.adk.models.google_llm import Gemini
 from google.adk.tools import AgentTool
 from google.genai.types import GenerateContentConfig
+from pydantic import BaseModel, Field
 
 from app.subagents.config import default_retry_config
 from app.subagents.price_extractor.agent import price_extractor_agent
 from app.tools.search_tools_bd import brightdata_toolset
+
+
+class Product(BaseModel):
+    rank: int = Field(..., description="Rank of the product")
+    price: str = Field(..., description="Price of the product")
+    store: str = Field(..., description="Store name")
+    url: str = Field(..., description="URL of the product")
+    status: str = Field(..., description="Availability status")
+
+
+class ShoppingResult(BaseModel):
+    product: str = Field(..., description="Product name")
+    country: str = Field(..., description="Country name")
+    results: list[Product] = Field(..., description="List of product results")
+    total_found: int = Field(..., description="Total number of results found")
+    error: str | None = Field(None, description="Error message if any")
 
 
 def _create_shopping_agent(price_extractor_agent: Agent) -> Agent:
@@ -17,6 +34,8 @@ def _create_shopping_agent(price_extractor_agent: Agent) -> Agent:
         tools=[brightdata_toolset, AgentTool(price_extractor_agent)],
         generate_content_config=GenerateContentConfig(
             temperature=0.1,
+            response_mime_type="application/json",
+            response_json_schema=ShoppingResult.model_json_schema(),
         ),
         instruction="""You are a Price Search Engine using BrightData.
 
@@ -107,7 +126,6 @@ From collected results:
 4. Take first 5
 
 ### 7. Output JSON
-```json
 {
   "product": "Product Name",
   "country": "Country Name",
@@ -118,14 +136,14 @@ From collected results:
       "store": "Store Name",
       "url": "https://...",
       "status": "In Stock"
-    }
+    },
+    ... (up to 5 results)
   ],
-  "total_found": 7
+  "total_found": 7,
+  "error": null
 }
-```
 
-If fewer than 5: Include "note": "Only X results available"
-If none: Include "error": "No available products found"
+If none of product is available: Include "error": "No available products found"
 
 **FINAL RULES:**
 - Step 1: Use `search_engine` tool for SERP search
