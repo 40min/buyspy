@@ -1,23 +1,28 @@
 from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.models.google_llm import Gemini
-from google.genai.types import GenerateContentConfig
+from google.genai.types import (
+    FunctionCallingConfig,
+    FunctionCallingConfigMode,
+    GenerateContentConfig,
+    ToolConfig,
+)
 from pydantic import BaseModel, Field
 
 from app.subagents.config import default_retry_config
 from app.tools.search_tools_bd import brightdata_toolset
 
 
-# {"price": 99.99, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://original-input-url.com", "status": "In Stock", "tier": 1}
-class PriceData(BaseModel):
-    price: float = Field(..., description="Product price")
-    currency: str = Field(..., description="Currency code (e.g., EUR, USD)")
-    store: str = Field(..., description="Store name")
-    url: str = Field(..., description="Original URL")
-    status: str = Field(
-        ..., description="Availability status (In Stock, Out of Stock, etc.)"
+class PriceExtractorInput(BaseModel):
+    """
+    Input parameters required by the price extractor agent.
+    """
+
+    url: str = Field(description="The specific URL of the product page to scrape.")
+    tier: int = Field(
+        description="The priority tier for the scraping task (e.g., 1 for high priority)."
     )
-    tier: int = Field(..., description="Priority tier (1, 2, or 3)")
+    product_name: str = Field(description="The name of the product for context.")
 
 
 def _create_price_extractor_agent() -> Agent:
@@ -26,34 +31,40 @@ def _create_price_extractor_agent() -> Agent:
         name="price_extractor_agent",
         model=Gemini(model="gemini-2.5-flash-lite", retry_options=default_retry_config),
         tools=[brightdata_toolset],
+        input_schema=PriceExtractorInput,
         generate_content_config=GenerateContentConfig(
-            temperature=0.1,
-            response_mime_type="application/json",
-            response_json_schema=PriceData.model_json_schema(),
+            temperature=0.1,  # More deterministic
+            tool_config=ToolConfig(
+                function_calling_config=FunctionCallingConfig(
+                    mode=FunctionCallingConfigMode.AUTO
+                )
+            ),
         ),
         instruction="""You are a Price Data Extractor Agent.
 
-**CRITICAL: Your response must be ONLY raw JSON or null. No explanations, no reasoning, no text before or after.**
-
-**INPUT FORMAT:**
-You will receive THREE parameters:
-- `url`: String - Single URL to scrape
-- `tier`: Integer - Priority tier (1, 2, or 3)
-- `product_name`: String - Product name for verification
+**INPUT FORMAT (JSON):**
+```json
+{
+  "url": "string - Single URL to scrape",
+  "tier": "integer - Priority tier (1, 2, or 3)",
+  "product_name": "string - Product name for verification"
+}
+```
 
 **YOUR TASK:**
-1. Scrape the URL using `scrape_as_markdown`
-2. Detect if it's an AGGREGATOR or DIRECT SHOP
-3. Extract price information
-4. Return structured JSON or null
+1. Call scrape_as_markdown with the provided URL (MANDATORY - mode=ANY enforces this)
+2. Analyze the scraped content
+3. Extract price data
+4. Return result as JSON
 
-## STEP-BY-STEP PROCESS
+**IMPORTANT:** The input does NOT contain price, currency, store, or status. You MUST extract these from the scraped content.
 
-### Step 1: Scrape the URL
-Call `scrape_as_markdown` with the provided URL **ONLY ONCE**.
-- If scraping fails or returns empty/minimal content (only title, no price data) → immediately return `null`
-- **DO NOT retry** the same URL multiple times
-- If successful and contains price data → proceed to Step 2
+## PROCESS
+
+### Step 1: Scrape (MANDATORY)
+Call `scrape_as_markdown(url)` with the provided URL.
+- If scraping fails or returns empty content → return `null`
+- If successful → proceed to analysis
 
 ### Step 2: Detect Page Type
 
@@ -91,10 +102,9 @@ Extract from the markdown:
 | [Power.fi](https://power.fi/item/456) | 139.99 EUR | Varastossa |
 | [Gigantti](https://gigantti.fi/product/789) | 135.00 EUR | Ei varastossa |
 ```
+→ Select Verkkokauppa.com (lowest), use input URL
 
-From this, select Verkkokauppa.com (lowest in-stock price: 129.90 EUR) and use the ORIGINAL INPUT URL in output.
-
-### Step 3B: IF DIRECT SHOP → Extract from Product Page
+### Step 3B: DIRECT SHOP → Extract from Product Page
 
 Extract:
 
@@ -128,78 +138,64 @@ Check if the page is about the correct product:
 - Key identifiers: brand name, model number
 - If clearly a different product → return `null`
 
-### Step 5: Format and Return
+### Step 5: Return Result
 
-**OUTPUT RULES:**
-1. **NO REASONING OR EXPLANATION**
-2. **NO PREAMBLE**
-3. **NO MARKDOWN CODE BLOCKS**
-4. **ONLY RAW JSON**
-
-**If extraction successful:**
-```
-{"price": 99.99, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://original-input-url.com", "status": "In Stock", "tier": 1}
+**Preferred format (clean JSON):**
+```json
+{"price": 129.90, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://hinta.fi/...", "status": "In Stock", "tier": 1}
 ```
 
-**If any critical issue:**
+**Alternative (with brief reasoning):**
+```
+Found Philips TAH9505 on aggregator. Lowest price: Verkkokauppa.com at 129.90 EUR.
+
+{"price": 129.90, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://hinta.fi/...", "status": "In Stock", "tier": 1}
+```
+
+**If failed:**
 ```
 null
 ```
 
-Critical issues:
-- Wrong product
-- Scraping failed
-- Page is empty or error page
+Or:
+```
+FAILED: Unable to scrape
+```
 
-## CONSTRAINTS
-- **DO NOT** rescrape or follow any links from aggregators
-- **DO NOT** retry the same URL multiple times - scrape once and decide
-- **DO NOT** write or execute Python code
-- **DO NOT** output ANY explanatory text
-- **DO NOT** use markdown code blocks
-- **DO** return only raw JSON or null
-- **DO** use the original input URL in the output (never shop links from aggregator tables)
-- **DO** ensure price is a number (float), not a string
+## KEY RULES
+- Always scrape first
+- Use original input URL in output (never shop links)
+- Price must be float, not string
+- Return JSON at the end (with or without reasoning)
 
 ## EXAMPLES
 
 **Example 1 - Direct Shop:**
-Input: url="https://verkkokauppa.com/fi/product/123", tier=1, product_name="Philips TAH9505"
-Markdown: "Philips TAH9505 ... 129,90 € ... Varastossa"
+Input: `{"url": "https://verkkokauppa.com/fi/product/123", "tier": 1, "product_name": "Philips TAH9505"}`
+
+After scraping: "Philips TAH9505 ... 129,90 € ... Varastossa"
+
 Output:
 ```json
 {"price": 129.90, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://verkkokauppa.com/fi/product/123", "status": "In Stock", "tier": 1}
 ```
 
 **Example 2 - Aggregator:**
-Input: url="https://hinta.fi/2162671/philips-tah9505", tier=1, product_name="Philips TAH9505"
-Markdown contains table:
+Input: `{"url": "https://hinta.fi/2162671/philips-tah9505", "tier": 1, "product_name": "Philips TAH9505"}`
+
+After scraping, table shows:
 ```
-| Kauppa | Hinta | Saatavuus |
-| [Verkkokauppa.com](https://verkkokauppa.com/product/123) | 129.90 EUR | Varastossa |
-| [Power.fi](https://power.fi/item/456) | 139.99 EUR | Varastossa |
-| [Gigantti](https://gigantti.fi/product/789) | 135.00 EUR | Ei varastossa |
+| Verkkokauppa.com | 129.90 EUR | Varastossa |
+| Power.fi | 139.99 EUR | Varastossa |
 ```
-Select: Verkkokauppa.com (lowest in-stock), BUT use original input URL
+
 Output:
 ```json
 {"price": 129.90, "currency": "EUR", "store": "Verkkokauppa.com", "url": "https://hinta.fi/2162671/philips-tah9505", "status": "In Stock", "tier": 1}
 ```
 
-**Example 3 - Aggregator (no availability info):**
-Input: url="https://pricerunner.com/product/123", tier=2, product_name="Sony WH-1000XM5"
-Markdown shows: "Best Buy: $349.99 | Amazon: $379.99 | Newegg: $359.99"
-Select: Best Buy (lowest price, availability unknown)
-Output:
-```json
-{"price": 349.99, "currency": "USD", "store": "Best Buy", "url": "https://pricerunner.com/product/123", "status": "Unknown", "tier": 2}
-```
-
-**Example 4 - No price found:**
-Output:
-```json
-null
-```
+**Example 3 - Failed:**
+Output: `null`
 """,
     )
 

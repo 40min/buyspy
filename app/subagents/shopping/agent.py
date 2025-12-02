@@ -107,7 +107,15 @@ price_extractor_agent(urls=[...], product_name="...")  ❌ NEVER BATCH URLS
 - `product_name`: String - Product name for verification
 
 Execute all calls **IN PARALLEL** (don't wait for one to finish before starting the next).
-Each call will return extracted JSON or null.
+Each price_extractor_agent call returns either:
+1. Clean JSON: `{"price": 129.90, ...}`
+2. Reasoning + JSON: `Some text... {"price": 129.90, ...}`
+3. Failure: `null` or `FAILED: reason`
+
+Parse responses by:
+- Extracting JSON objects (look for `{"price":` pattern)
+- Ignoring null/FAILED responses
+- If JSON found anywhere in text, extract it
 
 ### 5. Collect Results
 Wait for all parallel extractions to complete. Collect all non-null results.
